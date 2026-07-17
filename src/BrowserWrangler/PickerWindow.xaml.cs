@@ -24,6 +24,15 @@ public sealed partial class PickerWindow : Window
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out NativePoint pt);
 
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(nint hwnd);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(nint hwnd, int attr, ref int value, int size);
+
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWCP_ROUND = 2;
+
     private struct NativePoint
     {
         public int X;
@@ -31,8 +40,8 @@ public sealed partial class PickerWindow : Window
     }
 
     private const int RowHeight = 44;
-    private const int HeaderHeight = 41;
-    private const int WindowWidth = 340;
+    private const int HeaderHeight = 56;
+    private const int WindowWidth = 480;
     private const int MaxVisibleRows = 10;
 
     private readonly AppConfig _config;
@@ -51,6 +60,7 @@ public sealed partial class PickerWindow : Window
             : RuleMatcher.ToProfiles(config.Browsers);
 
         UrlText.Text = decision.Payload.Url;
+        ToolTipService.SetToolTip(UrlText, decision.Payload.Url);
         BuildRows();
         ConfigureWindow();
     }
@@ -125,15 +135,22 @@ public sealed partial class PickerWindow : Window
         appWindow.SetPresenter(presenter);
         appWindow.IsShownInSwitchers = false;
 
+        // round the actual window corners so they match the XAML border
+        nint hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        int corner = DWMWCP_ROUND;
+        _ = DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+
         int rows = Math.Min(Math.Max(_profiles.Count, 1), MaxVisibleRows);
-        int height = HeaderHeight + (rows * RowHeight) + 12;
+        double scale = GetDpiForWindow(hwnd) / 96.0;
+        int width = (int)(WindowWidth * scale);
+        int height = (int)((HeaderHeight + (rows * RowHeight) + 14) * scale);
 
         // center on the display the cursor is on
         GetCursorPos(out NativePoint pt);
         DisplayArea area = DisplayArea.GetFromPoint(new Windows.Graphics.PointInt32(pt.X, pt.Y), DisplayAreaFallback.Nearest);
-        int x = area.WorkArea.X + ((area.WorkArea.Width - WindowWidth) / 2);
+        int x = area.WorkArea.X + ((area.WorkArea.Width - width) / 2);
         int y = area.WorkArea.Y + ((area.WorkArea.Height - height) / 2);
-        appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, WindowWidth, height));
+        appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, height));
 
         if (Content is UIElement root)
         {

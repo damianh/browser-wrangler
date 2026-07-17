@@ -23,6 +23,8 @@
                     VerticalAlignment="Center"
                     FontSize="12"
                     Opacity="0.7"
+                    TextWrapping="Wrap"
+                    MaxLines="2"
                     TextTrimming="CharacterEllipsis" />
                 <Button
                     x:Name="CopyButton"
