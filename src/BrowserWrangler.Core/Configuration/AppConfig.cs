@@ -8,6 +8,7 @@ public sealed class PickerSettings
     public bool OnCtrlShift { get; set; } = true;
     public bool OnCtrlAlt { get; set; }
     public bool OnAltShift { get; set; }
+    public bool OnCapsLock { get; set; }
     public bool OnConflict { get; set; } = true;
     public bool OnNoRule { get; set; }
     public bool Always { get; set; }

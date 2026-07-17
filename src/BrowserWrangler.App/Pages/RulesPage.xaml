@@ -1,0 +1,37 @@
+<Page
+    x:Class="BrowserWrangler.App.Pages.RulesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Rules" />
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <TextBlock VerticalAlignment="Center" Text="Profile:" />
+            <ComboBox x:Name="ProfileCombo" MinWidth="260" SelectionChanged="Profile_Changed" />
+        </StackPanel>
+        <StackPanel Grid.Row="2" Spacing="6">
+            <TextBlock
+                FontSize="12"
+                Opacity="0.7"
+                TextWrapping="Wrap"
+                Text="One rule per line. Plain text matches anywhere in the URL (case-insensitive). Options: scope:domain, scope:path, priority:N, type:regex, mode:app, loc:window_title, loc:process_name — separated by | before the value. Example: scope:domain|priority:2|github.com" />
+            <TextBox
+                x:Name="RulesBox"
+                MinHeight="220"
+                AcceptsReturn="True"
+                FontFamily="Consolas"
+                TextWrapping="NoWrap"
+                ScrollViewer.VerticalScrollBarVisibility="Auto" />
+        </StackPanel>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12">
+            <Button Click="Save_Click" Style="{StaticResource AccentButtonStyle}" Content="Save rules" />
+            <TextBox x:Name="TestUrlBox" MinWidth="280" PlaceholderText="Test a URL against all rules..." />
+            <Button Click="Test_Click" Content="Test" />
+        </StackPanel>
+    </Grid>
+</Page>

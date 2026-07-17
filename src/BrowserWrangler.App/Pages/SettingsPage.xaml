@@ -1,0 +1,28 @@
+<Page
+    x:Class="BrowserWrangler.App.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="16" MaxWidth="640" HorizontalAlignment="Left">
+            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Settings" />
+
+            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Picker" />
+            <ToggleSwitch x:Name="PickerAlways" Header="Always show picker" Toggled="Setting_Changed" />
+            <ToggleSwitch x:Name="PickerOnConflict" Header="Show picker when multiple rules match" Toggled="Setting_Changed" />
+            <ToggleSwitch x:Name="PickerOnNoRule" Header="Show picker when no rule matches" Toggled="Setting_Changed" />
+            <ToggleSwitch x:Name="PickerCtrlShift" Header="Show picker when Ctrl+Shift is held" Toggled="Setting_Changed" />
+            <ToggleSwitch x:Name="PickerCtrlAlt" Header="Show picker when Ctrl+Alt is held" Toggled="Setting_Changed" />
+            <ToggleSwitch x:Name="PickerAltShift" Header="Show picker when Alt+Shift is held" Toggled="Setting_Changed" />
+            <ToggleSwitch x:Name="PickerCapsLock" Header="Show picker when Caps Lock is on" Toggled="Setting_Changed" />
+            <ToggleSwitch x:Name="PickerCloseOnFocusLoss" Header="Close picker when it loses focus" Toggled="Setting_Changed" />
+
+            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Toast" />
+            <ToggleSwitch x:Name="ToastEnabled" Header="Show toast when a URL is routed" Toggled="Setting_Changed" />
+            <Slider
+                x:Name="ToastDuration"
+                Header="Toast duration (seconds)"
+                Minimum="1" Maximum="10" StepFrequency="1"
+                ValueChanged="Slider_Changed" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>
