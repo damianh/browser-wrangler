@@ -26,9 +26,9 @@
             <TextBlock
                 FontSize="12" Opacity="0.7" TextWrapping="Wrap"
                 Text="Holding any of these while clicking a link always opens the picker, whatever the mode above." />
-            <CheckBox x:Name="PickerCtrlShift" Content="Ctrl + Shift" Click="Setting_Changed" />
-            <CheckBox x:Name="PickerCtrlAlt" Content="Ctrl + Alt" Click="Setting_Changed" />
-            <CheckBox x:Name="PickerAltShift" Content="Alt + Shift" Click="Setting_Changed" />
+            <CheckBox x:Name="PickerCtrlShift" Content="Ctrl + Shift + click" Click="Setting_Changed" />
+            <CheckBox x:Name="PickerCtrlAlt" Content="Ctrl + Alt + click" Click="Setting_Changed" />
+            <CheckBox x:Name="PickerAltShift" Content="Alt + Shift + click" Click="Setting_Changed" />
             <CheckBox x:Name="PickerCapsLock" Content="Caps Lock is on" Click="Setting_Changed" />
 
             <TextBlock Margin="0,16,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Behavior" />
