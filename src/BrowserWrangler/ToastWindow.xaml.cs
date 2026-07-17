@@ -3,7 +3,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Windows.Graphics;
 
-namespace BrowserWrangler.App;
+namespace BrowserWrangler;
 
 /// <summary>
 /// Small transient notification shown bottom-right after a URL was routed.

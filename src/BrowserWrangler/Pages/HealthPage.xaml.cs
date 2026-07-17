@@ -2,7 +2,7 @@ using BrowserWrangler.Core.Setup;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace BrowserWrangler.App.Pages;
+namespace BrowserWrangler.Pages;
 
 public sealed partial class HealthPage : Page
 {

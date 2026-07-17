@@ -10,7 +10,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
 
-namespace BrowserWrangler.App;
+namespace BrowserWrangler;
 
 /// <summary>
 /// Compact browser picker shown at the mouse cursor. Number keys 1-9 pick, Esc cancels.

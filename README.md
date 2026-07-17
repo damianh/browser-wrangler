@@ -22,18 +22,18 @@ by [aloneguid](https://github.com/aloneguid), licensed under the Apache License 
 Requires .NET SDK 10 on Windows.
 
 ```pwsh
-dotnet build src\BrowserWrangler.App -p:Platform=x64
+dotnet build src\BrowserWrangler -p:Platform=x64
 dotnet test tests\BrowserWrangler.Core.Tests
 ```
 
-Run `BrowserWrangler.App.exe` with no arguments for the config UI; go to the
+Run `BrowserWrangler.exe` with no arguments for the config UI; go to the
 **Health** page and click **Register as browser**, then set it as the default
 browser in Windows Settings.
 
 ## Layout
 
 - `src/BrowserWrangler.Core` — models, discovery, rules, pipeline, registry setup, launching (no UI deps)
-- `src/BrowserWrangler.App` — WinUI 3 app: config UI, picker, toast
+- `src/BrowserWrangler` — WinUI 3 app: config UI, picker, toast
 - `tests/BrowserWrangler.Core.Tests` — xUnit tests
 
 ## License

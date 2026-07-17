@@ -1,10 +1,10 @@
-using BrowserWrangler.App.Services;
+using BrowserWrangler.Services;
 using BrowserWrangler.Core.Models;
 using BrowserWrangler.Core.Rules;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace BrowserWrangler.App.Pages;
+namespace BrowserWrangler.Pages;
 
 public sealed partial class RulesPage : Page
 {

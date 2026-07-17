@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace BrowserWrangler.App.Pages;
+namespace BrowserWrangler.Pages;
 
 public sealed partial class AboutPage : Page
 {

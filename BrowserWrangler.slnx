@@ -1,6 +1,6 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/BrowserWrangler.App/BrowserWrangler.App.csproj">
+    <Project Path="src/BrowserWrangler/BrowserWrangler.csproj">
       <Platform Project="x64" />
     </Project>
     <Project Path="src/BrowserWrangler.Core/BrowserWrangler.Core.csproj" />

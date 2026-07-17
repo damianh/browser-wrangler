@@ -1,7 +1,7 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
-namespace BrowserWrangler.App;
+namespace BrowserWrangler;
 
 public partial class App : Application
 {

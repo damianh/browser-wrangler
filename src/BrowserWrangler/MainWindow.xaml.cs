@@ -1,8 +1,8 @@
-using BrowserWrangler.App.Pages;
+using BrowserWrangler.Pages;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace BrowserWrangler.App;
+namespace BrowserWrangler;
 
 public sealed partial class MainWindow : Window
 {

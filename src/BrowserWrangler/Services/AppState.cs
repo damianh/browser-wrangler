@@ -1,7 +1,7 @@
 using BrowserWrangler.Core.Configuration;
 using BrowserWrangler.Core.Discovery;
 
-namespace BrowserWrangler.App.Services;
+namespace BrowserWrangler.Services;
 
 /// <summary>
 /// Shared app state for the config UI: the loaded config plus save/refresh helpers.
