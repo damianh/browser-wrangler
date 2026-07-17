@@ -1,5 +1,7 @@
 namespace BrowserWrangler.Core.Models;
 
+using System.Text.Json.Serialization;
+
 /// <summary>
 /// A single launchable browser instance: a profile, incognito mode, or the browser itself
 /// for single-profile browsers. Equivalent to bt's browser_instance.
@@ -21,6 +23,7 @@ public sealed class BrowserProfile
     }
 
     /// <summary>The browser this profile belongs to. Set on load; not serialized.</summary>
+    [JsonIgnore]
     public Browser Browser { get; set; } = null!;
 
     public string Id { get; set; } = string.Empty;
@@ -51,12 +54,15 @@ public sealed class BrowserProfile
     public bool IsDefault { get; set; }
 
     /// <summary>Globally unique id: "browserId:profileId".</summary>
+    [JsonIgnore]
     public string LongId => $"{Browser.Id}:{Id}";
 
     /// <summary>True when this is the only (non-incognito) profile of its browser.</summary>
+    [JsonIgnore]
     public bool IsSingular =>
         !Browser.IsWellKnown || Browser.Profiles.Count(p => !p.IsIncognito) == 1;
 
+    [JsonIgnore]
     public string BestDisplayName => IsSingular && !IsIncognito ? Browser.Name : $"{Browser.Name} - {Name}";
 
     public string GetBestIconPath(bool includeOverride = true)

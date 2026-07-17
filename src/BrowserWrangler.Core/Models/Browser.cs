@@ -1,5 +1,7 @@
 namespace BrowserWrangler.Core.Models;
 
+using System.Text.Json.Serialization;
+
 public enum BrowserEngine
 {
     Unknown,
@@ -48,14 +50,19 @@ public sealed class Browser
 
     public List<BrowserProfile> Profiles { get; set; } = [];
 
+    [JsonIgnore]
     public bool IsWellKnown => Engine != BrowserEngine.Unknown;
 
+    [JsonIgnore]
     public bool IsStoreApp => OpenCommand.StartsWith(UwpCmdPrefix, StringComparison.OrdinalIgnoreCase);
 
+    [JsonIgnore]
     public bool SupportsFramelessWindows => Engine == BrowserEngine.Chromium;
 
+    [JsonIgnore]
     public int TotalRuleCount => Profiles.Sum(p => p.Rules.Count);
 
+    [JsonIgnore]
     public string BestIconPath => IconPath.Length > 0 ? IconPath : OpenCommand;
 
     public bool ContainsProfile(string longId) => Profiles.Any(p => p.LongId == longId);
