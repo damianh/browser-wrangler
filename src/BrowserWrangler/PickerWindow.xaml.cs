@@ -127,8 +127,13 @@ public sealed partial class PickerWindow : Window
 
         int rows = Math.Min(Math.Max(_profiles.Count, 1), MaxVisibleRows);
         int height = HeaderHeight + (rows * RowHeight) + 12;
+
+        // center on the display the cursor is on
         GetCursorPos(out NativePoint pt);
-        appWindow.MoveAndResize(new Windows.Graphics.RectInt32(pt.X - (WindowWidth / 2), pt.Y - HeaderHeight, WindowWidth, height));
+        DisplayArea area = DisplayArea.GetFromPoint(new Windows.Graphics.PointInt32(pt.X, pt.Y), DisplayAreaFallback.Nearest);
+        int x = area.WorkArea.X + ((area.WorkArea.Width - WindowWidth) / 2);
+        int y = area.WorkArea.Y + ((area.WorkArea.Height - height) / 2);
+        appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, WindowWidth, height));
 
         if (Content is UIElement root)
         {
