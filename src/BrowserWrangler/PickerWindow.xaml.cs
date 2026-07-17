@@ -3,28 +3,37 @@ using BrowserWrangler.Core.Configuration;
 using BrowserWrangler.Core.Launching;
 using BrowserWrangler.Core.Models;
 using BrowserWrangler.Core.Rules;
-using Microsoft.UI;
+using BrowserWrangler.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
 namespace BrowserWrangler;
 
 /// <summary>
-/// Compact browser picker shown at the mouse cursor. Number keys 1-9 pick, Esc cancels.
+/// Compact vertical browser picker shown at the mouse cursor, styled after bt:
+/// numbered shortcuts, browser icons, URL header with copy. Esc cancels.
 /// </summary>
 public sealed partial class PickerWindow : Window
 {
     [DllImport("user32.dll")]
-    private static extern bool GetCursorPos(out Point pt);
+    private static extern bool GetCursorPos(out NativePoint pt);
 
-    private struct Point
+    private struct NativePoint
     {
         public int X;
         public int Y;
     }
+
+    private const int RowHeight = 44;
+    private const int HeaderHeight = 41;
+    private const int WindowWidth = 340;
+    private const int MaxVisibleRows = 10;
 
     private readonly AppConfig _config;
     private readonly RouteDecision _decision;
@@ -36,37 +45,73 @@ public sealed partial class PickerWindow : Window
         _decision = decision;
         InitializeComponent();
 
-        // when multiple rules matched, offer just those; otherwise offer everything visible
+        // when multiple real rules matched, offer just those; otherwise everything visible
         _profiles = decision.Matches.Count > 1 && !decision.Matches[0].Rule.IsFallback
-            ? decision.Matches.Select(m => m.Profile).ToList()
+            ? decision.Matches.Select(m => m.Profile).Where(p => !p.IsHidden && !p.Browser.IsHidden).ToList()
             : RuleMatcher.ToProfiles(config.Browsers);
 
         UrlText.Text = decision.Payload.Url;
-        BuildButtons();
+        BuildRows();
         ConfigureWindow();
     }
 
-    private void BuildButtons()
+    private void BuildRows()
     {
         int index = 1;
         foreach (BrowserProfile profile in _profiles)
         {
-            var label = new StackPanel { Spacing = 2 };
-            label.Children.Add(new TextBlock { Text = profile.BestDisplayName });
+            var row = new Grid { ColumnSpacing = 10, Padding = new Thickness(8, 0, 8, 0), Height = 38 };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(26) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
             if (_config.Picker.ShowKeyHints && index <= 9)
             {
-                label.Children.Add(new TextBlock
+                var hint = new TextBlock
                 {
                     Text = index.ToString(),
-                    FontSize = 10,
-                    Opacity = 0.6,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                });
+                    FontSize = 12,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"],
+                };
+                row.Children.Add(hint);
             }
 
-            var button = new Button { Content = label, Tag = profile, Padding = new Thickness(12, 8, 12, 8) };
+            BitmapImage? icon = IconLoader.GetIconForExe(profile.Browser.OpenCommand);
+            if (icon is not null)
+            {
+                var img = new Image { Source = icon, Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Center };
+                Grid.SetColumn(img, 1);
+                row.Children.Add(img);
+            }
+            else
+            {
+                var fallbackIcon = new FontIcon { Glyph = "\uE774", FontSize = 18, VerticalAlignment = VerticalAlignment.Center };
+                Grid.SetColumn(fallbackIcon, 1);
+                row.Children.Add(fallbackIcon);
+            }
+
+            var name = new TextBlock
+            {
+                Text = profile.BestDisplayName,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            };
+            Grid.SetColumn(name, 2);
+            row.Children.Add(name);
+
+            var button = new Button
+            {
+                Content = row,
+                Tag = profile,
+                Padding = new Thickness(0),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            };
             button.Click += (_, _) => Pick((BrowserProfile)button.Tag);
-            ProfileList.Items.Add(button);
+            ProfileList.Children.Add(button);
             index++;
         }
     }
@@ -80,11 +125,10 @@ public sealed partial class PickerWindow : Window
         appWindow.SetPresenter(presenter);
         appWindow.IsShownInSwitchers = false;
 
-        // size to content, position at cursor
-        int width = Math.Max(240, 140 * Math.Min(_profiles.Count, 6));
-        int height = 110;
-        GetCursorPos(out Point pt);
-        appWindow.MoveAndResize(new Windows.Graphics.RectInt32(pt.X - width / 2, pt.Y - height / 2, width, height));
+        int rows = Math.Min(Math.Max(_profiles.Count, 1), MaxVisibleRows);
+        int height = HeaderHeight + (rows * RowHeight) + 12;
+        GetCursorPos(out NativePoint pt);
+        appWindow.MoveAndResize(new Windows.Graphics.RectInt32(pt.X - (WindowWidth / 2), pt.Y - HeaderHeight, WindowWidth, height));
 
         if (Content is UIElement root)
         {
@@ -121,6 +165,15 @@ public sealed partial class PickerWindow : Window
         {
             Pick(_profiles[number]);
         }
+    }
+
+    private void Copy_Click(object sender, RoutedEventArgs e)
+    {
+        var package = new DataPackage();
+        package.SetText(_decision.Payload.Url);
+        Clipboard.SetContent(package);
+        Clipboard.Flush();
+        Close();
     }
 
     private void Pick(BrowserProfile profile)

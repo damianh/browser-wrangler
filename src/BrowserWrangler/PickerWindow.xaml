@@ -7,20 +7,38 @@
         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
         BorderThickness="1"
         CornerRadius="8">
-        <StackPanel Padding="12" Spacing="8">
-            <TextBlock
-                x:Name="UrlText"
-                MaxWidth="420"
-                FontSize="12"
-                Opacity="0.7"
-                TextTrimming="CharacterEllipsis" />
-            <ItemsControl x:Name="ProfileList">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="6" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-            </ItemsControl>
-        </StackPanel>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Padding="12,8,8,8" ColumnSpacing="8" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    x:Name="UrlText"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Opacity="0.7"
+                    TextTrimming="CharacterEllipsis" />
+                <Button
+                    x:Name="CopyButton"
+                    Grid.Column="1"
+                    Padding="6"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    Click="Copy_Click"
+                    ToolTipService.ToolTip="Copy URL and close">
+                    <FontIcon FontSize="13" Glyph="&#xE8C8;" />
+                </Button>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="ProfileList" Padding="6" Spacing="2" />
+            </ScrollViewer>
+        </Grid>
     </Border>
 </Window>
