@@ -1,5 +1,5 @@
-using BrowserWrangler.Services;
 using BrowserWrangler.Core.Configuration;
+using BrowserWrangler.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -14,17 +14,39 @@ public sealed partial class SettingsPage : Page
     {
         InitializeComponent();
         PickerSettings p = AppState.Config.Picker;
-        PickerAlways.IsOn = p.Always;
-        PickerOnConflict.IsOn = p.OnConflict;
-        PickerOnNoRule.IsOn = p.OnNoRule;
-        PickerCtrlShift.IsOn = p.OnCtrlShift;
-        PickerCtrlAlt.IsOn = p.OnCtrlAlt;
-        PickerAltShift.IsOn = p.OnAltShift;
-        PickerCapsLock.IsOn = p.OnCapsLock;
+
+        // map flags to the closest single mode
+        PickerModeGroup.SelectedIndex = p switch
+        {
+            { Always: true } => 3,
+            { OnConflict: true, OnNoRule: true } => 2,
+            { OnConflict: true } => 1,
+            _ => 0,
+        };
+
+        PickerCtrlShift.IsChecked = p.OnCtrlShift;
+        PickerCtrlAlt.IsChecked = p.OnCtrlAlt;
+        PickerAltShift.IsChecked = p.OnAltShift;
+        PickerCapsLock.IsChecked = p.OnCapsLock;
         PickerCloseOnFocusLoss.IsOn = p.CloseOnFocusLoss;
         ToastEnabled.IsOn = AppState.Config.Toast.ShowOnOpen;
         ToastDuration.Value = AppState.Config.Toast.VisibleSeconds;
         _loading = false;
+    }
+
+    private void PickerMode_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        PickerSettings p = AppState.Config.Picker;
+        int mode = PickerModeGroup.SelectedIndex;
+        p.Always = mode == 3;
+        p.OnConflict = mode is 1 or 2;
+        p.OnNoRule = mode == 2;
+        AppState.Save();
     }
 
     private void Setting_Changed(object sender, RoutedEventArgs e)
@@ -35,13 +57,10 @@ public sealed partial class SettingsPage : Page
         }
 
         PickerSettings p = AppState.Config.Picker;
-        p.Always = PickerAlways.IsOn;
-        p.OnConflict = PickerOnConflict.IsOn;
-        p.OnNoRule = PickerOnNoRule.IsOn;
-        p.OnCtrlShift = PickerCtrlShift.IsOn;
-        p.OnCtrlAlt = PickerCtrlAlt.IsOn;
-        p.OnAltShift = PickerAltShift.IsOn;
-        p.OnCapsLock = PickerCapsLock.IsOn;
+        p.OnCtrlShift = PickerCtrlShift.IsChecked == true;
+        p.OnCtrlAlt = PickerCtrlAlt.IsChecked == true;
+        p.OnAltShift = PickerAltShift.IsChecked == true;
+        p.OnCapsLock = PickerCapsLock.IsChecked == true;
         p.CloseOnFocusLoss = PickerCloseOnFocusLoss.IsOn;
         AppState.Config.Toast.ShowOnOpen = ToastEnabled.IsOn;
         AppState.Save();
