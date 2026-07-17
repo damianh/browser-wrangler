@@ -32,6 +32,15 @@ public sealed class PipelineSettings
     public List<string> Substitutions { get; set; } = [];
 }
 
+/// <summary>Persisted size/position of the config window.</summary>
+public sealed class WindowSettings
+{
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public int X { get; set; } = int.MinValue;
+    public int Y { get; set; } = int.MinValue;
+}
+
 /// <summary>
 /// Root application configuration, persisted as JSON.
 /// </summary>
@@ -50,6 +59,8 @@ public sealed class AppConfig
     public ToastSettings Toast { get; set; } = new();
 
     public PipelineSettings Pipeline { get; set; } = new();
+
+    public WindowSettings Window { get; set; } = new();
 
     public List<Browser> Browsers { get; set; } = [];
 }
