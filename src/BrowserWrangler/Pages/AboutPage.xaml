@@ -10,7 +10,7 @@
         <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Attribution" />
         <TextBlock TextWrapping="Wrap"
                    Text="Browser Wrangler is a .NET / WinUI 3 fork of Browser Tamer by aloneguid, licensed under the Apache License 2.0. Portions of the design and behaviour are derived from that project." />
-        <HyperlinkButton Content="Browser Tamer on GitHub" NavigateUri="https://github.com/aloneguid/bt" />
+        <HyperlinkButton Content="Report an issue" NavigateUri="https://github.com/damianh/browser-wrangler/issues" />
         <HyperlinkButton Content="Apache License 2.0" NavigateUri="https://www.apache.org/licenses/LICENSE-2.0" />
     </StackPanel>
 </Page>

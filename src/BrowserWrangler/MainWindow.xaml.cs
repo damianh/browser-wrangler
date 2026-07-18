@@ -18,6 +18,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Title = "Browser Wrangler";
         ExtendsContentIntoTitleBar = true;
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"));
         RestoreWindowBounds();
         Closed += (_, _) => SaveWindowBounds();
         Nav.SelectedItem = Nav.MenuItems[0];
