@@ -42,6 +42,19 @@ public static class Program
         AppConfig config = store.Load();
         LaunchContext.Config = config;
 
+        // installer hooks: silent register/unregister of the browser (per-user registry)
+        if (args.Contains("--register", StringComparer.OrdinalIgnoreCase))
+        {
+            Core.Setup.BrowserRegistration.RegisterAll();
+            return 0;
+        }
+
+        if (args.Contains("--unregister", StringComparer.OrdinalIgnoreCase))
+        {
+            Core.Setup.BrowserRegistration.UnregisterAll();
+            return 0;
+        }
+
         string? url = args.FirstOrDefault(a =>
             a.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
             a.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
