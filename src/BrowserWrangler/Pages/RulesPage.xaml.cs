@@ -172,7 +172,7 @@ public sealed partial class RulesPage : Page
         foreach (BrowserProfile profile in _profiles)
         {
             var itemPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            if (IconLoader.GetIconForExe(profile.Browser.OpenCommand) is { } icon)
+            if (IconLoader.GetIconForProfile(profile) is { } icon)
             {
                 itemPanel.Children.Add(new Image
                 {

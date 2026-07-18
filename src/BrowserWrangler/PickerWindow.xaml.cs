@@ -87,7 +87,7 @@ public sealed partial class PickerWindow : Window
                 row.Children.Add(hint);
             }
 
-            BitmapImage? icon = IconLoader.GetIconForExe(profile.Browser.OpenCommand);
+            BitmapImage? icon = IconLoader.GetIconForProfile(profile);
             if (icon is not null)
             {
                 var img = new Image { Source = icon, Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Center };

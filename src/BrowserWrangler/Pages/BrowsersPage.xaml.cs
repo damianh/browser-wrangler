@@ -29,9 +29,26 @@ public sealed partial class BrowsersPage : Page
 
         foreach (BrowserProfile profile in RuleMatcher.ToProfiles(AppState.Config.Browsers, skipHidden: false))
         {
+            var itemPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            if (IconLoader.GetIconForProfile(profile) is { } comboIcon)
+            {
+                itemPanel.Children.Add(new Image
+                {
+                    Source = comboIcon,
+                    Width = 16,
+                    Height = 16,
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+            }
+
+            itemPanel.Children.Add(new TextBlock
+            {
+                Text = profile.BestDisplayName,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
             DefaultProfileCombo.Items.Add(new ComboBoxItem
             {
-                Content = profile.BestDisplayName,
+                Content = itemPanel,
                 Tag = profile.LongId,
             });
             if (profile.LongId == AppState.Config.DefaultProfile)
@@ -45,6 +62,17 @@ public sealed partial class BrowsersPage : Page
             var panel = new StackPanel { Spacing = 4 };
 
             var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+            if (IconLoader.GetIconForExe(browser.OpenCommand) is { } browserIcon)
+            {
+                header.Children.Add(new Image
+                {
+                    Source = browserIcon,
+                    Width = 24,
+                    Height = 24,
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+            }
+
             header.Children.Add(new TextBlock
             {
                 Text = browser.Name,
@@ -74,6 +102,17 @@ public sealed partial class BrowsersPage : Page
             foreach (BrowserProfile profile in browser.Profiles)
             {
                 var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
+                if (IconLoader.GetIconForProfile(profile) is { } profileIcon)
+                {
+                    row.Children.Add(new Image
+                    {
+                        Source = profileIcon,
+                        Width = 16,
+                        Height = 16,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    });
+                }
+
                 row.Children.Add(new TextBlock { Text = profile.Name, VerticalAlignment = VerticalAlignment.Center, MinWidth = 180 });
                 var profileHide = new CheckBox { Content = "Hide", IsChecked = profile.IsHidden };
                 profileHide.Click += (_, _) =>
