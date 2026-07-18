@@ -171,7 +171,25 @@ public sealed partial class RulesPage : Page
         var target = new ComboBox { Width = 200, VerticalAlignment = VerticalAlignment.Center };
         foreach (BrowserProfile profile in _profiles)
         {
-            target.Items.Add(profile.BestDisplayName);
+            var itemPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            if (IconLoader.GetIconForExe(profile.Browser.OpenCommand) is { } icon)
+            {
+                itemPanel.Children.Add(new Image
+                {
+                    Source = icon,
+                    Width = 16,
+                    Height = 16,
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+            }
+
+            itemPanel.Children.Add(new TextBlock
+            {
+                Text = profile.BestDisplayName,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            });
+            target.Items.Add(itemPanel);
         }
 
         target.SelectedIndex = _profiles.IndexOf(entry.Profile);
