@@ -10,15 +10,20 @@ public class PipelineTests
     {
         private readonly Queue<HttpResponseMessage> _responses = new(responses);
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        private HttpResponseMessage DequeueResponse()
         {
             if (_responses.Count == 0)
             {
                 throw new InvalidOperationException("No stubbed response available.");
             }
 
-            return Task.FromResult(_responses.Dequeue());
+            return _responses.Dequeue();
         }
+
+        protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken) => DequeueResponse();
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(DequeueResponse());
     }
 
     [Fact]
