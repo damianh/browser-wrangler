@@ -9,6 +9,8 @@ namespace BrowserWrangler.Core.Pipeline;
 public sealed class RedirectExpandStep : IUrlPipelineStep
 {
     private const int MaxRedirects = 10;
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ResolveTimeout = RequestTimeout;
     private static readonly HttpClient SharedClient = CreateHttpClient();
 
     private readonly HttpClient _httpClient;
@@ -42,16 +44,17 @@ public sealed class RedirectExpandStep : IUrlPipelineStep
         }
 
         Uri current = parsedUri;
-        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { current.AbsoluteUri };
+        var visited = new HashSet<string>(StringComparer.Ordinal) { current.AbsoluteUri };
+        using var cancellationTokenSource = new CancellationTokenSource(ResolveTimeout);
 
         try
         {
             for (int redirectCount = 0; redirectCount < MaxRedirects; redirectCount++)
             {
-                using HttpResponseMessage response = Send(current, HttpMethod.Head);
+                using HttpResponseMessage response = Send(current, HttpMethod.Head, cancellationTokenSource.Token);
                 if (ShouldRetryWithGet(response.StatusCode))
                 {
-                    using HttpResponseMessage getResponse = Send(current, HttpMethod.Get);
+                    using HttpResponseMessage getResponse = Send(current, HttpMethod.Get, cancellationTokenSource.Token);
                     if (!TryFollowRedirect(current, getResponse, visited, out Uri nextFromGet))
                     {
                         break;
@@ -73,7 +76,7 @@ public sealed class RedirectExpandStep : IUrlPipelineStep
         {
             return false;
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException)
         {
             return false;
         }
@@ -82,10 +85,10 @@ public sealed class RedirectExpandStep : IUrlPipelineStep
         return true;
     }
 
-    private HttpResponseMessage Send(Uri uri, HttpMethod method)
+    private HttpResponseMessage Send(Uri uri, HttpMethod method, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(method, uri);
-        return _httpClient.Send(request, HttpCompletionOption.ResponseHeadersRead, CancellationToken.None);
+        return _httpClient.Send(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
 
     private static bool TryFollowRedirect(
@@ -136,7 +139,7 @@ public sealed class RedirectExpandStep : IUrlPipelineStep
             UseCookies = false,
         })
         {
-            Timeout = TimeSpan.FromSeconds(5),
+            Timeout = RequestTimeout,
         };
         client.DefaultRequestHeaders.UserAgent.ParseAdd("BrowserWrangler/1.0");
         return client;

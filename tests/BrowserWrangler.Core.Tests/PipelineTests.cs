@@ -6,25 +6,48 @@ namespace BrowserWrangler.Core.Tests;
 
 public class PipelineTests
 {
-    private sealed class StubHttpMessageHandler(params HttpResponseMessage[] responses) : HttpMessageHandler
+    private sealed class StubHttpMessageHandler : HttpMessageHandler
     {
-        private readonly Queue<HttpResponseMessage> _responses = new(responses);
+        private readonly Queue<Func<HttpRequestMessage, CancellationToken, HttpResponseMessage>> _responses;
 
-        private HttpResponseMessage DequeueResponse()
+        public StubHttpMessageHandler(params HttpResponseMessage[] responses)
+            : this(responses.Select(response => new Func<HttpRequestMessage, CancellationToken, HttpResponseMessage>((_, _) => response)).ToArray())
+        {
+        }
+
+        public StubHttpMessageHandler(params Func<HttpRequestMessage, CancellationToken, HttpResponseMessage>[] responses)
+        {
+            _responses = new Queue<Func<HttpRequestMessage, CancellationToken, HttpResponseMessage>>(responses);
+        }
+
+        private HttpResponseMessage DequeueResponse(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             if (_responses.Count == 0)
             {
                 throw new InvalidOperationException("No stubbed response available.");
             }
 
-            return _responses.Dequeue();
+            return _responses.Dequeue()(request, cancellationToken);
         }
 
-        protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken) => DequeueResponse();
+        protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken) => DequeueResponse(request, cancellationToken);
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(DequeueResponse());
+            => Task.FromResult(DequeueResponse(request, cancellationToken));
     }
+
+    private static Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> DelayedResponse(
+        TimeSpan delay,
+        HttpResponseMessage response) =>
+        (_, cancellationToken) =>
+        {
+            if (cancellationToken.WaitHandle.WaitOne(delay))
+            {
+                throw new OperationCanceledException(cancellationToken);
+            }
+
+            return response;
+        };
 
     [Fact]
     public void Substring_replacer_replaces_all_occurrences()
@@ -119,6 +142,27 @@ public class PipelineTests
     }
 
     [Fact]
+    public void Redirect_expander_treats_case_distinct_targets_as_unique_hops()
+    {
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.Redirect)
+            {
+                Headers = { Location = new Uri("https://example.com/Path") },
+            },
+            new HttpResponseMessage(HttpStatusCode.Redirect)
+            {
+                Headers = { Location = new Uri("https://example.com/path") },
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)));
+        var step = new RedirectExpandStep(httpClient);
+        var payload = new ClickPayload("https://short.example/case-sensitive");
+
+        step.Process(payload);
+
+        Assert.Equal("https://example.com/path", payload.Url);
+    }
+
+    [Fact]
     public void Redirect_expander_ignores_unsupported_redirect_targets()
     {
         using var mailtoLocationClient = new HttpClient(new StubHttpMessageHandler(
@@ -150,5 +194,32 @@ public class PipelineTests
         step.Process(payload);
 
         Assert.Equal("https://example.com/final", payload.Url);
+    }
+
+    [Fact]
+    public void Redirect_expander_aborts_when_total_resolution_budget_expires()
+    {
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(
+            DelayedResponse(
+                TimeSpan.FromSeconds(2),
+                new HttpResponseMessage(HttpStatusCode.Redirect)
+                {
+                    Headers = { Location = new Uri("https://example.com/one") },
+                }),
+            DelayedResponse(
+                TimeSpan.FromSeconds(2),
+                new HttpResponseMessage(HttpStatusCode.Redirect)
+                {
+                    Headers = { Location = new Uri("https://example.com/two") },
+                }),
+            DelayedResponse(
+                TimeSpan.FromSeconds(2),
+                new HttpResponseMessage(HttpStatusCode.OK))));
+        var step = new RedirectExpandStep(httpClient);
+        var payload = new ClickPayload("https://short.example/slow");
+
+        step.Process(payload);
+
+        Assert.Equal("https://short.example/slow", payload.Url);
     }
 }
