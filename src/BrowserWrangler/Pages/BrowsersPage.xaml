@@ -22,7 +22,7 @@
             <ComboBox x:Name="DefaultProfileCombo" MinWidth="260" SelectionChanged="DefaultProfile_Changed" />
         </StackPanel>
         <ScrollViewer Grid.Row="2">
-            <StackPanel x:Name="BrowserList" Spacing="8" />
+            <StackPanel x:Name="BrowserList" HorizontalAlignment="Left" MaxWidth="640" MinWidth="560" Spacing="8" />
         </ScrollViewer>
     </Grid>
 </Page>

@@ -71,14 +71,25 @@ public sealed partial class RulesPage : Page
 
     private Border BuildRow(RuleEntry entry)
     {
-        var grid = new Grid { ColumnSpacing = 8, Padding = new Thickness(12) };
-        foreach (int col in Enumerable.Range(0, 7))
+        // two-line row: value on top (full width), controls beneath
+        var grid = new Grid { ColumnSpacing = 8, RowSpacing = 8, Padding = new Thickness(12) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var controls = new Grid { ColumnSpacing = 8 };
+        foreach (int col in Enumerable.Range(0, 6))
         {
-            grid.ColumnDefinitions.Add(new ColumnDefinition
+            controls.ColumnDefinitions.Add(new ColumnDefinition
             {
-                Width = col == 2 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto,
+                Width = col == 4 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto,
             });
         }
+
+        Grid.SetRow(controls, 1);
+        Grid.SetColumn(controls, 1);
+        grid.Children.Add(controls);
 
         // drag handle
         var handle = new FontIcon
@@ -88,6 +99,7 @@ public sealed partial class RulesPage : Page
             Opacity = 0.5,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        Grid.SetRowSpan(handle, 2);
         ToolTipService.SetToolTip(handle, "Drag to reorder \u2014 topmost matching rule wins");
         grid.Children.Add(handle);
 
@@ -97,8 +109,7 @@ public sealed partial class RulesPage : Page
         location.Items.Add("Title");
         location.Items.Add("Process");
         location.SelectedIndex = (int)entry.Rule.Location;
-        Grid.SetColumn(location, 1);
-        grid.Children.Add(location);
+        controls.Children.Add(location);
 
         // value
         var value = new TextBox
@@ -115,7 +126,7 @@ public sealed partial class RulesPage : Page
                 Save();
             }
         };
-        Grid.SetColumn(value, 2);
+        Grid.SetColumn(value, 1);
         grid.Children.Add(value);
 
         // scope (URL only): icon-only dropdown, expands to icon + text
@@ -164,8 +175,8 @@ public sealed partial class RulesPage : Page
             scope.IsEnabled = location.SelectedIndex == 0;
             Save();
         };
-        Grid.SetColumn(scope, 3);
-        grid.Children.Add(scope);
+        Grid.SetColumn(scope, 1);
+        controls.Children.Add(scope);
 
         // target browser/profile
         var target = new ComboBox { Width = 200, VerticalAlignment = VerticalAlignment.Center };
@@ -206,8 +217,8 @@ public sealed partial class RulesPage : Page
             entry.Profile.Rules.Add(entry.Rule);
             Save();
         };
-        Grid.SetColumn(target, 4);
-        grid.Children.Add(target);
+        Grid.SetColumn(target, 2);
+        controls.Children.Add(target);
 
         // regex + app mode
         var toggles = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
@@ -228,8 +239,8 @@ public sealed partial class RulesPage : Page
             Save();
         };
         toggles.Children.Add(appMode);
-        Grid.SetColumn(toggles, 5);
-        grid.Children.Add(toggles);
+        Grid.SetColumn(toggles, 3);
+        controls.Children.Add(toggles);
 
         // delete
         var delete = new Button { Padding = new Thickness(8, 6, 8, 6), VerticalAlignment = VerticalAlignment.Center };
@@ -247,8 +258,8 @@ public sealed partial class RulesPage : Page
             _rows.Remove(row);
             PersistOrder();
         };
-        Grid.SetColumn(delete, 6);
-        grid.Children.Add(delete);
+        Grid.SetColumn(delete, 5);
+        controls.Children.Add(delete);
 
         row.Tag = entry;
         return row;
