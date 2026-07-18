@@ -271,7 +271,21 @@ public static class FirefoxProfiles
             yield break;
         }
 
-        foreach (FirefoxContainerInfo container in ParseContainersJson(File.ReadAllText(containersPath)))
+        string containersJson;
+        try
+        {
+            containersJson = File.ReadAllText(containersPath);
+        }
+        catch (IOException)
+        {
+            yield break;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            yield break;
+        }
+
+        foreach (FirefoxContainerInfo container in ParseContainersJson(containersJson))
         {
             yield return container;
         }

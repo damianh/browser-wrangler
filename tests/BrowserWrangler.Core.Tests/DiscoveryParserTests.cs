@@ -304,6 +304,56 @@ public class DiscoveryParserTests
     }
 
     [Fact]
+    public void Discover_ignores_locked_containers_json()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "bw-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "profiles.ini"), """
+            [Profile0]
+            Name=default-release
+            IsRelative=1
+            Path=Profiles/abc.default-release
+            """);
+
+            string profileDir = Path.Combine(dir, "Profiles", "abc.default-release");
+            Directory.CreateDirectory(profileDir);
+            string containersPath = Path.Combine(profileDir, "containers.json");
+            File.WriteAllText(containersPath, """
+            {
+              "identities": [
+                { "public": true, "userContextId": 7, "name": "Dev Team" }
+              ]
+            }
+            """);
+
+            var browser = new Browser("firefox", "Firefox", @"C:\Program Files\Mozilla Firefox\firefox.exe")
+            {
+                IsAutoDiscovered = true,
+                Engine = BrowserEngine.Gecko,
+                DataPath = dir,
+            };
+
+            using var lockStream = new FileStream(containersPath, FileMode.Open, FileAccess.Read, FileShare.None);
+
+            FirefoxProfiles.Discover(browser);
+
+            Assert.Contains(browser.Profiles, p => p.Id == "Profile0" && p.Name == "default-release");
+            Assert.DoesNotContain(browser.Profiles, p => p.Id.StartsWith("Profile0+c_", StringComparison.Ordinal));
+            Assert.Contains(browser.Profiles, p => p.Id == "private" && p.IsIncognito);
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void UnmangleOpenCommand_strips_quotes_and_args()
     {
         Assert.Equal(
