@@ -34,6 +34,27 @@
             <TextBlock Margin="0,16,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Behavior" />
             <ToggleSwitch x:Name="PickerCloseOnFocusLoss" Header="Close the picker when it loses focus" Toggled="Setting_Changed" />
 
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="URL preprocessing" />
+            <ToggleSwitch
+                x:Name="SafelinksEnabled"
+                Header="Decode Outlook Safelinks before matching rules"
+                Toggled="Setting_Changed" />
+            <TextBlock
+                Margin="0,0,0,8"
+                FontSize="12"
+                Opacity="0.7"
+                TextWrapping="Wrap"
+                Text="Turns Microsoft 365 Safelinks URLs back into their original destination before Browser Wrangler evaluates rules." />
+            <ToggleSwitch
+                x:Name="ExpandShortLinksEnabled"
+                Header="Expand shortened links before matching rules"
+                Toggled="Setting_Changed" />
+            <TextBlock
+                FontSize="12"
+                Opacity="0.7"
+                TextWrapping="Wrap"
+                Text="Follows HTTP redirects before matching so rules can see the final destination. This can add latency and shares clicked URLs with redirect services." />
+
             <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="Toast" />
             <ToggleSwitch x:Name="ToastEnabled" Header="Show toast when a URL is routed" Toggled="Setting_Changed" />
             <Slider

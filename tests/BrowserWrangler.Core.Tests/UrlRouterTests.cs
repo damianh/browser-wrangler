@@ -92,6 +92,21 @@ public class UrlRouterTests
     }
 
     [Fact]
+    public void Safelinks_are_unwrapped_before_matching()
+    {
+        AppConfig config = MakeConfig();
+        config.Browsers[0].Profiles[1].Rules.Add(new MatchRule("github.com"));
+
+        RouteDecision d = UrlRouter.Route(
+            config,
+            new ClickPayload("https://nam01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fdamianh%2Fbrowser-wrangler&data=123"));
+
+        Assert.Equal("https://github.com/damianh/browser-wrangler", d.Payload.Url);
+        Assert.Equal(RouteAction.Open, d.Action);
+        Assert.Equal("chrome:Work", d.Matches[0].Profile.LongId);
+    }
+
+    [Fact]
     public void No_browsers_returns_none()
     {
         var config = new AppConfig();

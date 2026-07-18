@@ -30,7 +30,7 @@ After installing, set Browser Wrangler as your default browser in
 - **Registers as a browser** — per-user registry (no admin), health checks with one-click fixes
 - **Browser & profile discovery** — installed browsers, Chromium profiles, Firefox profiles, incognito/private entries, with real profile avatars
 - **Rules engine** — substring/regex match on whole URL, domain or path; drag-to-reorder priority; fallback default profile; bt-compatible rule syntax (`scope:domain|priority:2|github.com`)
-- **URL pipeline** — find/replace substitutions (`substr|find|replace`, `rgx|find|replace`)
+- **URL pipeline** — Outlook Safelinks unwrap, optional shortened-link expansion, and find/replace substitutions (`substr|find|replace`, `rgx|find|replace`)
 - **Picker** — popup listing browsers/profiles with number-key shortcuts; triggered by hotkeys (Ctrl+Shift etc.), rule conflicts, or no-match
 - **Toast** — brief notification showing which rule routed to which browser
 - **Fast cold-start** — URL invocations route and launch without initializing XAML unless UI is needed; ReadyToRun-compiled releases

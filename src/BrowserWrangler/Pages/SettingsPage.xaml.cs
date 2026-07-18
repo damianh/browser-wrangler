@@ -31,6 +31,8 @@ public sealed partial class SettingsPage : Page
         PickerCloseOnFocusLoss.IsOn = p.CloseOnFocusLoss;
         ToastEnabled.IsOn = AppState.Config.Toast.ShowOnOpen;
         ToastDuration.Value = AppState.Config.Toast.VisibleSeconds;
+        SafelinksEnabled.IsOn = AppState.Config.Pipeline.UnwrapSafelinks;
+        ExpandShortLinksEnabled.IsOn = AppState.Config.Pipeline.ExpandShortenedUrls;
         _loading = false;
     }
 
@@ -63,6 +65,8 @@ public sealed partial class SettingsPage : Page
         p.OnCapsLock = PickerCapsLock.IsChecked == true;
         p.CloseOnFocusLoss = PickerCloseOnFocusLoss.IsOn;
         AppState.Config.Toast.ShowOnOpen = ToastEnabled.IsOn;
+        AppState.Config.Pipeline.UnwrapSafelinks = SafelinksEnabled.IsOn;
+        AppState.Config.Pipeline.ExpandShortenedUrls = ExpandShortLinksEnabled.IsOn;
         AppState.Save();
     }
 

@@ -23,6 +23,8 @@ public class ConfigStoreTests : IDisposable
         AppConfig config = MakeStore().Load();
         Assert.True(config.Toast.ShowOnOpen);
         Assert.True(config.Picker.OnCtrlShift);
+        Assert.True(config.Pipeline.UnwrapSafelinks);
+        Assert.False(config.Pipeline.ExpandShortenedUrls);
         Assert.Empty(config.Browsers);
     }
 
@@ -41,6 +43,13 @@ public class ConfigStoreTests : IDisposable
             Theme = "dark",
             Browsers = [chrome],
         };
+        config.Picker.OnCtrlShift = false;
+        config.Picker.OnConflict = false;
+        config.Picker.ShowKeyHints = false;
+        config.Toast.ShowOnOpen = false;
+        config.Pipeline.UnwrapSafelinks = false;
+        config.Pipeline.ExpandShortenedUrls = true;
+        config.Pipeline.Substitute = false;
         config.Pipeline.Substitutions.Add("substr|http://|https://");
         store.Save(config);
 
@@ -55,6 +64,13 @@ public class ConfigStoreTests : IDisposable
         Assert.Single(p.Rules);
         Assert.Equal(MatchScope.Domain, p.Rules[0].Scope);
         Assert.Equal(2, p.Rules[0].Priority);
+        Assert.False(loaded.Picker.OnCtrlShift);
+        Assert.False(loaded.Picker.OnConflict);
+        Assert.False(loaded.Picker.ShowKeyHints);
+        Assert.False(loaded.Toast.ShowOnOpen);
+        Assert.False(loaded.Pipeline.UnwrapSafelinks);
+        Assert.True(loaded.Pipeline.ExpandShortenedUrls);
+        Assert.False(loaded.Pipeline.Substitute);
         Assert.Equal("substr|http://|https://", loaded.Pipeline.Substitutions[0]);
     }
 
