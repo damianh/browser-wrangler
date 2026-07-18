@@ -141,6 +141,8 @@ public sealed partial class RulesPage : Page
         {
             Content = scopeIcon,
             Width = 64,
+            Height = 32,
+            Padding = new Thickness(8, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
         var scopeFlyout = new MenuFlyout { Placement = FlyoutPlacementMode.Bottom };
@@ -222,7 +224,7 @@ public sealed partial class RulesPage : Page
 
         // regex + app mode
         var toggles = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        var regex = new ToggleButton { Content = ".*", IsChecked = entry.Rule.IsRegex, Padding = new Thickness(8, 4, 8, 4) };
+        var regex = new ToggleButton { Content = ".*", IsChecked = entry.Rule.IsRegex, Height = 32, Padding = new Thickness(8, 0, 8, 0) };
         ToolTipService.SetToolTip(regex, "Regular expression (must match the whole input)");
         regex.Click += (_, _) =>
         {
@@ -230,7 +232,7 @@ public sealed partial class RulesPage : Page
             Save();
         };
         toggles.Children.Add(regex);
-        var appMode = new ToggleButton { IsChecked = entry.Rule.AppMode, Padding = new Thickness(8, 4, 8, 4) };
+        var appMode = new ToggleButton { IsChecked = entry.Rule.AppMode, Height = 32, Padding = new Thickness(8, 0, 8, 0) };
         appMode.Content = new FontIcon { Glyph = "\uE737", FontSize = 14 };
         ToolTipService.SetToolTip(appMode, "Open in app mode (frameless window, Chromium only)");
         appMode.Click += (_, _) =>
@@ -243,7 +245,7 @@ public sealed partial class RulesPage : Page
         controls.Children.Add(toggles);
 
         // delete
-        var delete = new Button { Padding = new Thickness(8, 6, 8, 6), VerticalAlignment = VerticalAlignment.Center };
+        var delete = new Button { Height = 32, Padding = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
         delete.Content = new FontIcon { Glyph = "\uE74D", FontSize = 14 };
         ToolTipService.SetToolTip(delete, "Delete rule");
         var row = new Border
