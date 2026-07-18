@@ -1,10 +1,26 @@
 using BrowserWrangler.Core.Models;
 using BrowserWrangler.Core.Pipeline;
+using System.Net;
 
 namespace BrowserWrangler.Core.Tests;
 
 public class PipelineTests
 {
+    private sealed class StubHttpMessageHandler(params HttpResponseMessage[] responses) : HttpMessageHandler
+    {
+        private readonly Queue<HttpResponseMessage> _responses = new(responses);
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (_responses.Count == 0)
+            {
+                throw new InvalidOperationException("No stubbed response available.");
+            }
+
+            return Task.FromResult(_responses.Dequeue());
+        }
+    }
+
     [Fact]
     public void Substring_replacer_replaces_all_occurrences()
     {
@@ -53,5 +69,51 @@ public class PipelineTests
         var payload = new ClickPayload("https://a.com");
         pipeline.Process(payload);
         Assert.Equal("https://c.com", payload.Url);
+    }
+
+    [Fact]
+    public void Safelinks_step_decodes_embedded_destination()
+    {
+        var step = new SafeLinksStep();
+        var payload = new ClickPayload("https://nam01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fdamianh%2Fbrowser-wrangler&data=123");
+
+        step.Process(payload);
+
+        Assert.Equal("https://github.com/damianh/browser-wrangler", payload.Url);
+    }
+
+    [Fact]
+    public void Redirect_expander_follows_redirect_chain()
+    {
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.MovedPermanently)
+            {
+                Headers = { Location = new Uri("https://example.com/final") },
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)));
+        var step = new RedirectExpandStep(httpClient);
+        var payload = new ClickPayload("https://bit.ly/example");
+
+        step.Process(payload);
+
+        Assert.Equal("https://example.com/final", payload.Url);
+    }
+
+    [Fact]
+    public void Redirect_expander_retries_with_get_when_head_not_supported()
+    {
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.MethodNotAllowed),
+            new HttpResponseMessage(HttpStatusCode.Redirect)
+            {
+                Headers = { Location = new Uri("https://example.com/final") },
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)));
+        var step = new RedirectExpandStep(httpClient);
+        var payload = new ClickPayload("https://t.co/example");
+
+        step.Process(payload);
+
+        Assert.Equal("https://example.com/final", payload.Url);
     }
 }

@@ -32,6 +32,16 @@ public static class UrlRouter
     public static UrlPipeline BuildPipeline(AppConfig config)
     {
         var pipeline = new UrlPipeline();
+        if (config.Pipeline.UnwrapSafelinks)
+        {
+            pipeline.Add(new SafeLinksStep());
+        }
+
+        if (config.Pipeline.ExpandShortenedUrls)
+        {
+            pipeline.Add(new RedirectExpandStep());
+        }
+
         if (config.Pipeline.Substitute)
         {
             foreach (string rule in config.Pipeline.Substitutions)

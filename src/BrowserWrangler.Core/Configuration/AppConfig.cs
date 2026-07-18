@@ -26,6 +26,15 @@ public sealed class ToastSettings
 
 public sealed class PipelineSettings
 {
+    /// <summary>Decode Outlook Safelinks URLs before any other pipeline steps or rule matching.</summary>
+    public bool UnwrapSafelinks { get; set; } = true;
+
+    /// <summary>
+    /// Resolve redirecting URLs before matching. This makes a network request for clicked links and
+    /// should stay opt-in because it adds latency and shares the destination with the redirect host.
+    /// </summary>
+    public bool ExpandShortenedUrls { get; set; }
+
     public bool Substitute { get; set; } = true;
 
     /// <summary>Substitution rules in bt format: "substr|find|replace" or "rgx|find|replace".</summary>
