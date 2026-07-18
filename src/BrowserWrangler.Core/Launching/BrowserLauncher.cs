@@ -13,9 +13,13 @@ public static class BrowserLauncher
     /// </summary>
     public static string BuildArguments(BrowserProfile profile, ClickPayload payload)
     {
+        string encodedUrl = Uri.EscapeDataString(payload.Url);
         string arg = profile.LaunchArg.Length == 0
             ? payload.Url
-            : ReplaceFirst(profile.LaunchArg, BrowserProfile.UrlArgName, payload.Url);
+            : ReplaceFirst(
+                ReplaceFirst(profile.LaunchArg, BrowserProfile.UrlEncodedArgName, encodedUrl),
+                BrowserProfile.UrlArgName,
+                payload.Url);
 
         if (payload.AppMode && profile.Browser.SupportsFramelessWindows)
         {

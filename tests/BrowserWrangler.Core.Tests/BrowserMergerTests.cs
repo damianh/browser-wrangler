@@ -12,9 +12,13 @@ public class BrowserMergerTests
         var oldProfile = new BrowserProfile(oldChrome, "Default", "Personal") { UserArg = "--dark" };
         oldProfile.Rules.Add(new MatchRule("github.com"));
         oldChrome.Profiles.Add(oldProfile);
+        var oldContainer = new BrowserProfile(oldChrome, "Default+c_2", "Personal :: Work");
+        oldContainer.Rules.Add(new MatchRule("work.example.com"));
+        oldChrome.Profiles.Add(oldContainer);
 
         var newChrome = new Browser("chrome", "Chrome", @"C:\chrome.exe") { IsAutoDiscovered = true };
         newChrome.Profiles.Add(new BrowserProfile(newChrome, "Default", "Personal Renamed"));
+        newChrome.Profiles.Add(new BrowserProfile(newChrome, "Default+c_2", "Personal Renamed :: Work"));
         newChrome.Profiles.Add(new BrowserProfile(newChrome, "Profile 1", "New Profile"));
 
         var merged = BrowserMerger.Merge([newChrome], [oldChrome]);
@@ -25,6 +29,8 @@ public class BrowserMergerTests
         BrowserProfile def = merged[0].Profiles.Single(p => p.Id == "Default");
         Assert.Single(def.Rules);
         Assert.Equal("--dark", def.UserArg);
+        BrowserProfile container = merged[0].Profiles.Single(p => p.Id == "Default+c_2");
+        Assert.Single(container.Rules);
         Assert.Empty(merged[0].Profiles.Single(p => p.Id == "Profile 1").Rules);
     }
 

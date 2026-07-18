@@ -232,6 +232,127 @@ public class DiscoveryParserTests
                 }
             }
         }
+
+    [Fact]
+    public void ParseContainersJson_reads_public_container_identities()
+    {
+        const string json = """
+        {
+          "identities": [
+            { "public": true, "userContextId": 1, "l10nID": "userContextPersonal.label" },
+            { "public": true, "userContextId": 2, "name": "Dev Team" },
+            { "public": false, "userContextId": 3, "name": "Hidden" }
+          ]
+        }
+        """;
+
+        var containers = FirefoxProfiles.ParseContainersJson(json);
+
+        Assert.Equal(2, containers.Count);
+        Assert.Equal(new FirefoxContainerInfo("1", "Personal"), containers[0]);
+        Assert.Equal(new FirefoxContainerInfo("2", "Dev Team"), containers[1]);
+    }
+
+    [Fact]
+    public void Discover_adds_container_profiles_from_profile_containers_json()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "bw-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "profiles.ini"), """
+            [Profile0]
+            Name=default-release
+            IsRelative=1
+            Path=Profiles/abc.default-release
+            """);
+
+            string profileDir = Path.Combine(dir, "Profiles", "abc.default-release");
+            Directory.CreateDirectory(profileDir);
+            File.WriteAllText(Path.Combine(profileDir, "containers.json"), """
+            {
+              "identities": [
+                { "public": true, "userContextId": 7, "name": "Dev Team" }
+              ]
+            }
+            """);
+
+            var browser = new Browser("firefox", "Firefox", @"C:\Program Files\Mozilla Firefox\firefox.exe")
+            {
+                IsAutoDiscovered = true,
+                Engine = BrowserEngine.Gecko,
+                DataPath = dir,
+            };
+
+            FirefoxProfiles.Discover(browser);
+
+            Assert.Contains(browser.Profiles, p => p.Id == "Profile0" && p.Name == "default-release");
+            Assert.Contains(browser.Profiles, p =>
+                p.Id == "Profile0+c_7" &&
+                p.Name == "default-release :: Dev Team" &&
+                p.LaunchArg == "\"ext+container:name=Dev%20Team&url=%url_encoded%\" -foreground -P \"default-release\"");
+            Assert.Contains(browser.Profiles, p => p.Id == "private" && p.IsIncognito);
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Discover_ignores_locked_containers_json()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "bw-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "profiles.ini"), """
+            [Profile0]
+            Name=default-release
+            IsRelative=1
+            Path=Profiles/abc.default-release
+            """);
+
+            string profileDir = Path.Combine(dir, "Profiles", "abc.default-release");
+            Directory.CreateDirectory(profileDir);
+            string containersPath = Path.Combine(profileDir, "containers.json");
+            File.WriteAllText(containersPath, """
+            {
+              "identities": [
+                { "public": true, "userContextId": 7, "name": "Dev Team" }
+              ]
+            }
+            """);
+
+            var browser = new Browser("firefox", "Firefox", @"C:\Program Files\Mozilla Firefox\firefox.exe")
+            {
+                IsAutoDiscovered = true,
+                Engine = BrowserEngine.Gecko,
+                DataPath = dir,
+            };
+
+            using var lockStream = new FileStream(containersPath, FileMode.Open, FileAccess.Read, FileShare.None);
+
+            FirefoxProfiles.Discover(browser);
+
+            Assert.Contains(browser.Profiles, p => p.Id == "Profile0" && p.Name == "default-release");
+            Assert.DoesNotContain(browser.Profiles, p => p.Id.StartsWith("Profile0+c_", StringComparison.Ordinal));
+            Assert.Contains(browser.Profiles, p => p.Id == "private" && p.IsIncognito);
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
     [Fact]
     public void UnmangleOpenCommand_strips_quotes_and_args()
     {

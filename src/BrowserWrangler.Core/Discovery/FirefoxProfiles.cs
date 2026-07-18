@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using BrowserWrangler.Core.Models;
 using Microsoft.Data.Sqlite;
 
@@ -13,6 +14,9 @@ public sealed record FirefoxProfileInfo(
     bool IsRelative,
     string InstallationId,
     string StoreId = "");
+
+/// <summary>A Firefox Multi-Account Container parsed from containers.json.</summary>
+public sealed record FirefoxContainerInfo(string Id, string Name);
 
 /// <summary>
 /// Discovers Firefox (Gecko) profiles from profiles.ini in the browser's data folder.
@@ -109,11 +113,27 @@ public static class FirefoxProfiles
                 continue;
             }
 
-            string arg = $"\"{BrowserProfile.UrlArgName}\" -foreground -P \"{info.Name}\"";
+            string argSuffix = $" -foreground -P \"{info.Name}\"";
+            string arg = $"\"{BrowserProfile.UrlArgName}\"{argSuffix}";
             browser.Profiles.Add(new BrowserProfile(browser, info.SectionId, info.Name, arg)
             {
                 SortOrder = browser.Profiles.Count,
             });
+
+            foreach (FirefoxContainerInfo container in ReadContainersForProfile(browser.DataPath, info))
+            {
+                string encodedName = Uri.EscapeDataString(container.Name);
+                string containerArg =
+                    $"\"ext+container:name={encodedName}&url={BrowserProfile.UrlEncodedArgName}\"{argSuffix}";
+                browser.Profiles.Add(new BrowserProfile(
+                    browser,
+                    $"{info.SectionId}+c_{container.Id}",
+                    $"{info.Name} :: {container.Name}",
+                    containerArg)
+                {
+                    SortOrder = browser.Profiles.Count,
+                });
+            }
         }
 
         if (browser.Profiles.Count > 0)
@@ -125,6 +145,66 @@ public static class FirefoxProfiles
                 SortOrder = browser.Profiles.Count,
             });
         }
+    }
+
+    /// <summary>Parses Firefox containers from a profile's containers.json content.</summary>
+    public static List<FirefoxContainerInfo> ParseContainersJson(string jsonContent)
+    {
+        var result = new List<FirefoxContainerInfo>();
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(jsonContent);
+            if (!document.RootElement.TryGetProperty("identities", out JsonElement identities) ||
+                identities.ValueKind != JsonValueKind.Array)
+            {
+                return result;
+            }
+
+            foreach (JsonElement identity in identities.EnumerateArray())
+            {
+                if (!identity.TryGetProperty("public", out JsonElement isPublic) ||
+                    isPublic.ValueKind != JsonValueKind.True)
+                {
+                    continue;
+                }
+
+                if (!identity.TryGetProperty("userContextId", out JsonElement userContextId) ||
+                    !userContextId.TryGetInt32(out int id))
+                {
+                    continue;
+                }
+
+                string? name = identity.TryGetProperty("name", out JsonElement explicitName) &&
+                               explicitName.ValueKind == JsonValueKind.String
+                    ? explicitName.GetString()
+                    : null;
+
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    string? localizationId = TryGetString(identity, "l10nID") ?? TryGetString(identity, "l10nId");
+                    if (localizationId is null)
+                    {
+                        continue;
+                    }
+
+                    name = ResolveDefaultContainerName(localizationId);
+                }
+
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    continue;
+                }
+
+                result.Add(new FirefoxContainerInfo(id.ToString(), name));
+            }
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+
+        return result;
     }
 
     private static List<FirefoxProfileInfo> ResolveProfiles(string dataPath, List<FirefoxProfileInfo> iniProfiles)
@@ -177,6 +257,40 @@ public static class FirefoxProfiles
         return [.. byPath.Values];
     }
 
+    private static IEnumerable<FirefoxContainerInfo> ReadContainersForProfile(string dataPath, FirefoxProfileInfo profile)
+    {
+        string profilePath = ResolveProfilePath(dataPath, profile);
+        if (!Directory.Exists(profilePath))
+        {
+            yield break;
+        }
+
+        string containersPath = Path.Combine(profilePath, "containers.json");
+        if (!File.Exists(containersPath))
+        {
+            yield break;
+        }
+
+        string containersJson;
+        try
+        {
+            containersJson = File.ReadAllText(containersPath);
+        }
+        catch (IOException)
+        {
+            yield break;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            yield break;
+        }
+
+        foreach (FirefoxContainerInfo container in ParseContainersJson(containersJson))
+        {
+            yield return container;
+        }
+    }
+
     private static IEnumerable<FirefoxStoreProfileInfo> ReadStoreProfiles(string dataPath, string storeId)
     {
         string storePath = Path.Combine(dataPath, "Profile Groups", $"{storeId}.sqlite");
@@ -222,6 +336,25 @@ public static class FirefoxProfiles
         byte[] hash = MD5.HashData(Encoding.UTF8.GetBytes(normalizedPath));
         return $"store-{storeId}-{Convert.ToHexStringLower(hash)}";
     }
+
+    private static string ResolveProfilePath(string dataPath, FirefoxProfileInfo profile) =>
+        profile.IsRelative
+            ? Path.GetFullPath(Path.Combine(dataPath, profile.Path.Replace('/', Path.DirectorySeparatorChar)))
+            : profile.Path;
+
+    private static string? TryGetString(JsonElement element, string key) =>
+        element.TryGetProperty(key, out JsonElement value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static string ResolveDefaultContainerName(string localizationId) => localizationId switch
+    {
+        "userContextPersonal.label" or "user-context-personal" => "Personal",
+        "userContextWork.label" or "user-context-work" => "Work",
+        "userContextBanking.label" or "user-context-banking" => "Banking",
+        "userContextShopping.label" or "user-context-shopping" => "Shopping",
+        _ => localizationId,
+    };
 
     private sealed record FirefoxStoreProfileInfo(string Path, string Name);
 }

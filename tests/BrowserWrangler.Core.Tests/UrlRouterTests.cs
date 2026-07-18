@@ -141,6 +141,39 @@ public class BrowserLauncherTests
     }
 
     [Fact]
+    public void BuildArguments_substitutes_encoded_url_placeholder()
+    {
+        var b = new Browser("f", "Firefox", @"C:\firefox.exe") { Engine = BrowserEngine.Gecko };
+        var p = new BrowserProfile(
+            b,
+            "container",
+            "Work",
+            $"\"ext+container:name=Work&url={BrowserProfile.UrlEncodedArgName}\" -foreground -P \"Default\"");
+
+        string args = BrowserLauncher.BuildArguments(p, new ClickPayload("https://example.com/path?q=a&x=1"));
+
+        Assert.Equal(
+            "\"ext+container:name=Work&url=https%3A%2F%2Fexample.com%2Fpath%3Fq%3Da%26x%3D1\" -foreground -P \"Default\"",
+            args);
+    }
+
+    [Fact]
+    public void BuildArguments_does_not_reprocess_placeholder_text_inside_url()
+    {
+        var b = new Browser("f", "Firefox", @"C:\firefox.exe") { Engine = BrowserEngine.Gecko };
+        var p = new BrowserProfile(
+            b,
+            "container",
+            "Work",
+            $"\"encoded={BrowserProfile.UrlEncodedArgName}&raw={BrowserProfile.UrlArgName}\"");
+        const string rawUrl = "https://example.com/%url_encoded%?x=%url%";
+
+        string args = BrowserLauncher.BuildArguments(p, new ClickPayload(rawUrl));
+
+        Assert.Equal($"\"encoded={Uri.EscapeDataString(rawUrl)}&raw={rawUrl}\"", args);
+    }
+
+    [Fact]
     public void BuildArguments_empty_launch_arg_uses_url()
     {
         var b = new Browser("x", "X", @"C:\x.exe");
