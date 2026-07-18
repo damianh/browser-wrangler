@@ -66,4 +66,25 @@ public class RuleHitLogStoreTests : IDisposable
         Assert.Single(entries);
         Assert.Equal("https://valid.example", entries[0].Url);
     }
+
+    [Fact]
+    public void Append_trims_log_to_max_retained_entries()
+    {
+        RuleHitLogStore store = MakeStore();
+        int retained = RuleHitLogStore.MaxRetainedEntries;
+
+        for (int i = 0; i < retained + 2; i++)
+        {
+            store.Append(new RuleHitLogEntry { Url = $"https://{i:D4}.example" });
+        }
+
+        string[] lines = File.ReadAllLines(store.LogFilePath);
+        IReadOnlyList<RuleHitLogEntry> entries = store.ReadLatest(retained + 10);
+
+        Assert.Equal(retained, lines.Length);
+        Assert.Equal(retained, entries.Count);
+        Assert.Equal($"https://{retained + 1:D4}.example", entries[0].Url);
+        Assert.Equal("https://0002.example", entries[^1].Url);
+    }
+
 }

@@ -8,6 +8,8 @@ namespace BrowserWrangler.Core.Logging;
 /// </summary>
 public sealed class RuleHitLogStore
 {
+    public const int MaxRetainedEntries = 5000;
+
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = false,
@@ -34,9 +36,13 @@ public sealed class RuleHitLogStore
         }
 
         string line = JsonSerializer.Serialize(entry, Options);
-        using var stream = new FileStream(LogFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
-        using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        writer.WriteLine(line);
+        byte[] payload = Encoding.UTF8.GetBytes(line + Environment.NewLine);
+        using (var stream = new FileStream(LogFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
+        {
+            stream.Write(payload, 0, payload.Length);
+        }
+
+        TrimToRetentionLimit();
     }
 
     public IReadOnlyList<RuleHitLogEntry> ReadLatest(int maxEntries = 200)
@@ -46,8 +52,10 @@ public sealed class RuleHitLogStore
             return [];
         }
 
-        var entries = new List<RuleHitLogEntry>();
-        foreach (string line in File.ReadLines(LogFilePath))
+        var latestWindow = new Queue<RuleHitLogEntry>(maxEntries);
+        using var stream = new FileStream(LogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        while (reader.ReadLine() is { } line)
         {
             if (line.Length == 0)
             {
@@ -59,7 +67,11 @@ public sealed class RuleHitLogStore
                 RuleHitLogEntry? entry = JsonSerializer.Deserialize<RuleHitLogEntry>(line, Options);
                 if (entry is not null)
                 {
-                    entries.Add(entry);
+                    latestWindow.Enqueue(entry);
+                    if (latestWindow.Count > maxEntries)
+                    {
+                        latestWindow.Dequeue();
+                    }
                 }
             }
             catch (JsonException)
@@ -68,11 +80,10 @@ public sealed class RuleHitLogStore
             }
         }
 
-        int start = Math.Max(0, entries.Count - maxEntries);
-        var latest = new List<RuleHitLogEntry>(entries.Count - start);
-        for (int i = entries.Count - 1; i >= start; i--)
+        var latest = new List<RuleHitLogEntry>(latestWindow.Count);
+        while (latestWindow.Count > 0)
         {
-            latest.Add(entries[i]);
+            latest.Insert(0, latestWindow.Dequeue());
         }
 
         return latest;
@@ -82,7 +93,54 @@ public sealed class RuleHitLogStore
     {
         if (File.Exists(LogFilePath))
         {
-            File.Delete(LogFilePath);
+            try
+            {
+                File.Delete(LogFilePath);
+            }
+            catch (IOException)
+            {
+                // if the file is currently in use, keep the app responsive and try again later
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // if the file is currently in use, keep the app responsive and try again later
+            }
+        }
+    }
+
+    private void TrimToRetentionLimit()
+    {
+        if (!File.Exists(LogFilePath))
+        {
+            return;
+        }
+
+        var tail = new Queue<string>(MaxRetainedEntries);
+        bool exceeded = false;
+        using (var readStream = new FileStream(LogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        using (var reader = new StreamReader(readStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true))
+        {
+            while (reader.ReadLine() is { } line)
+            {
+                tail.Enqueue(line);
+                if (tail.Count > MaxRetainedEntries)
+                {
+                    tail.Dequeue();
+                    exceeded = true;
+                }
+            }
+        }
+
+        if (!exceeded)
+        {
+            return;
+        }
+
+        using var writeStream = new FileStream(LogFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+        using var writer = new StreamWriter(writeStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        foreach (string line in tail)
+        {
+            writer.WriteLine(line);
         }
     }
 }
