@@ -14,9 +14,10 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      # Versioning strategy: YYYY.MMDD.buildrun (e.g. 2026.0718.42)
+      # Versioning strategy: YYYY.MDD.buildrun (e.g. 2026.718.42) — month unpadded
+      # so the tag matches the numerically-normalized ProductVersion
       - id: v
-        run: echo "version=$(date -u +%Y.%m%d).${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(date -u +%Y.%-m%d).${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
   build:
     needs: version
