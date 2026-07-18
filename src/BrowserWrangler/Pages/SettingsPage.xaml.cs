@@ -33,6 +33,7 @@ public sealed partial class SettingsPage : Page
         ToastDuration.Value = AppState.Config.Toast.VisibleSeconds;
         SafelinksEnabled.IsOn = AppState.Config.Pipeline.UnwrapSafelinks;
         ExpandShortLinksEnabled.IsOn = AppState.Config.Pipeline.ExpandShortenedUrls;
+        LogRuleHitsEnabled.IsOn = AppState.Config.LogRuleHits;
         _loading = false;
     }
 
@@ -67,6 +68,7 @@ public sealed partial class SettingsPage : Page
         AppState.Config.Toast.ShowOnOpen = ToastEnabled.IsOn;
         AppState.Config.Pipeline.UnwrapSafelinks = SafelinksEnabled.IsOn;
         AppState.Config.Pipeline.ExpandShortenedUrls = ExpandShortLinksEnabled.IsOn;
+        AppState.Config.LogRuleHits = LogRuleHitsEnabled.IsOn;
         AppState.Save();
     }
 

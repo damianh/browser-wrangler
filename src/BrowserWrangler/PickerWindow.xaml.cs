@@ -205,6 +205,7 @@ public sealed partial class PickerWindow : Window
 
     private void Pick(BrowserProfile profile)
     {
+        RuleHitLogger.LogPickerSelection(_config, _decision, profile);
         BrowserLauncher.Launch(profile, _decision.Payload);
         Close();
     }

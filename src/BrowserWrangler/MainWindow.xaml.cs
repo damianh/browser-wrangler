@@ -72,6 +72,7 @@ public sealed partial class MainWindow : Window
         System.Type page = tag switch
         {
             "rules" => typeof(RulesPage),
+            "rule-hits" => typeof(RuleHitsPage),
             "settings" => typeof(SettingsPage),
             "health" => typeof(HealthPage),
             "about" => typeof(AboutPage),
