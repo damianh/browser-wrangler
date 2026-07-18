@@ -8,7 +8,7 @@ namespace BrowserWrangler.Core.Logging;
 /// </summary>
 public sealed class RuleHitLogStore
 {
-    public const int MaxRetainedEntries = 5000;
+    public const int MaxRetainedEntries = 500;
 
     private static readonly JsonSerializerOptions Options = new()
     {
