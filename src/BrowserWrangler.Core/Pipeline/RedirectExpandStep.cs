@@ -100,7 +100,11 @@ public sealed class RedirectExpandStep : IUrlPipelineStep
             return false;
         }
 
-        Uri candidate = location.IsAbsoluteUri ? location : new Uri(current, location);
+        if (!Uri.TryCreate(current, location, out Uri? candidate) || candidate is null || !IsSupportedUri(candidate))
+        {
+            return false;
+        }
+
         if (!visited.Add(candidate.AbsoluteUri))
         {
             return false;
@@ -120,6 +124,9 @@ public sealed class RedirectExpandStep : IUrlPipelineStep
         HttpStatusCode.RedirectMethod or
         HttpStatusCode.TemporaryRedirect or
         HttpStatusCode.PermanentRedirect;
+
+    private static bool IsSupportedUri(Uri uri) =>
+        uri.IsAbsoluteUri && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
     private static HttpClient CreateHttpClient()
     {

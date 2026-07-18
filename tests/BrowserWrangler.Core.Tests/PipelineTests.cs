@@ -88,6 +88,20 @@ public class PipelineTests
     }
 
     [Fact]
+    public void Safelinks_step_ignores_invalid_or_unsupported_destination()
+    {
+        var step = new SafeLinksStep();
+        var invalidPayload = new ClickPayload("https://nam01.safelinks.protection.outlook.com/?url=not-a-url");
+        var mailtoPayload = new ClickPayload("https://nam01.safelinks.protection.outlook.com/?url=mailto%3Atest%40example.com");
+
+        step.Process(invalidPayload);
+        step.Process(mailtoPayload);
+
+        Assert.Equal("https://nam01.safelinks.protection.outlook.com/?url=not-a-url", invalidPayload.Url);
+        Assert.Equal("https://nam01.safelinks.protection.outlook.com/?url=mailto%3Atest%40example.com", mailtoPayload.Url);
+    }
+
+    [Fact]
     public void Redirect_expander_follows_redirect_chain()
     {
         using var httpClient = new HttpClient(new StubHttpMessageHandler(
@@ -102,6 +116,22 @@ public class PipelineTests
         step.Process(payload);
 
         Assert.Equal("https://example.com/final", payload.Url);
+    }
+
+    [Fact]
+    public void Redirect_expander_ignores_unsupported_redirect_targets()
+    {
+        using var mailtoLocationClient = new HttpClient(new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.Redirect)
+            {
+                Headers = { Location = new Uri("mailto:test@example.com") },
+            }));
+        var mailtoLocationStep = new RedirectExpandStep(mailtoLocationClient);
+        var mailtoLocationPayload = new ClickPayload("https://short.example/mailto");
+
+        mailtoLocationStep.Process(mailtoLocationPayload);
+
+        Assert.Equal("https://short.example/mailto", mailtoLocationPayload.Url);
     }
 
     [Fact]

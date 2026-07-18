@@ -26,9 +26,11 @@ public sealed class SafeLinksStep : IUrlPipelineStep
         }
 
         string decodedUrl = WebUtility.UrlDecode(encodedUrl);
-        if (!string.IsNullOrWhiteSpace(decodedUrl))
+        if (Uri.TryCreate(decodedUrl, UriKind.Absolute, out Uri? destination) &&
+            destination is not null &&
+            IsSupportedUri(destination))
         {
-            payload.Url = decodedUrl;
+            payload.Url = destination.AbsoluteUri;
         }
     }
 
@@ -62,4 +64,7 @@ public sealed class SafeLinksStep : IUrlPipelineStep
 
         return null;
     }
+
+    private static bool IsSupportedUri(Uri uri) =>
+        uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
 }
