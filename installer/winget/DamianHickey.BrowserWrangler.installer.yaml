@@ -1,0 +1,21 @@
+# Filled by CI: {VERSION}, {X64_URL}, {X64_SHA256}, {ARM64_URL}, {ARM64_SHA256}
+PackageIdentifier: DamianHickey.BrowserWrangler
+PackageVersion: "{VERSION}"
+InstallerType: inno
+Scope: user
+InstallModes:
+  - silent
+InstallerSwitches:
+  Silent: /VERYSILENT /NORESTART
+UpgradeBehavior: install
+AppsAndFeaturesEntries:
+  - ProductCode: "{8F398F1B-F8C8-4A30-806E-D0A3FBA8A0D3}_is1"
+Installers:
+  - Architecture: x64
+    InstallerUrl: "{X64_URL}"
+    InstallerSha256: "{X64_SHA256}"
+  - Architecture: arm64
+    InstallerUrl: "{ARM64_URL}"
+    InstallerSha256: "{ARM64_SHA256}"
+ManifestType: installer
+ManifestVersion: 1.6.0
