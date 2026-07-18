@@ -114,10 +114,15 @@ public sealed partial class BrowsersPage : Page
                 }
 
                 row.Children.Add(new TextBlock { Text = profile.Name, VerticalAlignment = VerticalAlignment.Center, MinWidth = 180 });
-                var profileHide = new CheckBox { Content = "Visible", IsChecked = !profile.IsHidden };
-                profileHide.Click += (_, _) =>
+                var profileHide = new ToggleSwitch
                 {
-                    profile.IsHidden = profileHide.IsChecked != true;
+                    OnContent = "Visible",
+                    OffContent = "Hidden",
+                    IsOn = !profile.IsHidden,
+                };
+                profileHide.Toggled += (_, _) =>
+                {
+                    profile.IsHidden = !profileHide.IsOn;
                     AppState.Save();
                 };
                 row.Children.Add(profileHide);
