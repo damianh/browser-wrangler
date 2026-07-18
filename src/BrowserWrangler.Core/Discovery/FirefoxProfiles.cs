@@ -1,22 +1,25 @@
+using System.Security.Cryptography;
+using System.Text;
 using BrowserWrangler.Core.Models;
+using Microsoft.Data.Sqlite;
 
 namespace BrowserWrangler.Core.Discovery;
 
-/// <summary>A classic profile parsed from Firefox's profiles.ini.</summary>
+/// <summary>A Firefox profile parsed from profiles.ini.</summary>
 public sealed record FirefoxProfileInfo(
     string SectionId,
     string Name,
     string Path,
     bool IsRelative,
-    string InstallationId);
+    string InstallationId,
+    string StoreId = "");
 
 /// <summary>
 /// Discovers Firefox (Gecko) profiles from profiles.ini in the browser's data folder.
-/// Classic profiles only; profile groups (sqlite) are a later milestone.
 /// </summary>
 public static class FirefoxProfiles
 {
-    /// <summary>Parses classic profiles from profiles.ini content.</summary>
+    /// <summary>Parses Firefox profiles from profiles.ini content.</summary>
     public static List<FirefoxProfileInfo> ParseProfilesIni(string iniContent)
     {
         // minimal ini parse: section -> key/value
@@ -69,16 +72,11 @@ public static class FirefoxProfiles
                 continue;
             }
 
-            // profile-group containers (StoreID) are not classic profiles
-            if (values.ContainsKey("StoreID"))
-            {
-                continue;
-            }
-
             string displayName = values.TryGetValue("Name", out string? n) ? n : name;
             bool isRelative = !values.TryGetValue("IsRelative", out string? rel) || rel == "1";
             string installId = pathToInstall.TryGetValue(path, out string? inst) ? inst : string.Empty;
-            result.Add(new FirefoxProfileInfo(name, displayName, path, isRelative, installId));
+            string storeId = values.TryGetValue("StoreID", out string? sid) ? sid : string.Empty;
+            result.Add(new FirefoxProfileInfo(name, displayName, path, isRelative, installId, storeId));
         }
 
         return result;
@@ -98,7 +96,7 @@ public static class FirefoxProfiles
             return;
         }
 
-        foreach (FirefoxProfileInfo info in ParseProfilesIni(File.ReadAllText(iniPath)))
+        foreach (FirefoxProfileInfo info in ResolveProfiles(browser.DataPath, ParseProfilesIni(File.ReadAllText(iniPath))))
         {
             // skip profiles bound to another Firefox installation
             if (info.InstallationId.Length > 0 && instanceId.Length > 0 && info.InstallationId != instanceId)
@@ -106,7 +104,7 @@ public static class FirefoxProfiles
                 continue;
             }
 
-            if (info.InstallationId.Length == 0 && !includeClassicProfiles)
+            if (info.InstallationId.Length == 0 && info.StoreId.Length == 0 && !includeClassicProfiles)
             {
                 continue;
             }
@@ -128,4 +126,102 @@ public static class FirefoxProfiles
             });
         }
     }
+
+    private static List<FirefoxProfileInfo> ResolveProfiles(string dataPath, List<FirefoxProfileInfo> iniProfiles)
+    {
+        var byPath = new Dictionary<string, FirefoxProfileInfo>(StringComparer.OrdinalIgnoreCase);
+        var storeToInstall = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (FirefoxProfileInfo profile in iniProfiles)
+        {
+            string normalizedPath = NormalizeProfilePath(profile.Path);
+            byPath[normalizedPath] = profile;
+
+            if (profile.StoreId.Length > 0 && profile.InstallationId.Length > 0 &&
+                !storeToInstall.ContainsKey(profile.StoreId))
+            {
+                storeToInstall[profile.StoreId] = profile.InstallationId;
+            }
+        }
+
+        foreach (string storeId in iniProfiles
+                     .Select(p => p.StoreId)
+                     .Where(s => s.Length > 0)
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            foreach (FirefoxStoreProfileInfo storeProfile in ReadStoreProfiles(dataPath, storeId))
+            {
+                string normalizedPath = NormalizeProfilePath(storeProfile.Path);
+                if (byPath.TryGetValue(normalizedPath, out FirefoxProfileInfo? current))
+                {
+                    // Modern profile names come from the profile-group sqlite store.
+                    byPath[normalizedPath] = current with
+                    {
+                        Name = storeProfile.Name,
+                    };
+                }
+                else
+                {
+                    string syntheticId = BuildSyntheticProfileId(storeId, normalizedPath);
+                    string installId = storeToInstall.GetValueOrDefault(storeId, string.Empty);
+                    byPath[normalizedPath] = new FirefoxProfileInfo(
+                        syntheticId,
+                        storeProfile.Name,
+                        storeProfile.Path,
+                        IsRelative: true,
+                        installId,
+                        storeId);
+                }
+            }
+        }
+
+        return [.. byPath.Values];
+    }
+
+    private static IEnumerable<FirefoxStoreProfileInfo> ReadStoreProfiles(string dataPath, string storeId)
+    {
+        string storePath = Path.Combine(dataPath, "Profile Groups", $"{storeId}.sqlite");
+        if (!File.Exists(storePath))
+        {
+            yield break;
+        }
+
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = storePath,
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT path, name FROM Profiles";
+        using SqliteDataReader reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (reader.IsDBNull(0) || reader.IsDBNull(1))
+            {
+                continue;
+            }
+
+            string path = reader.GetString(0);
+            string name = reader.GetString(1);
+            if (path.Length == 0 || name.Length == 0)
+            {
+                continue;
+            }
+
+            yield return new FirefoxStoreProfileInfo(path, name);
+        }
+    }
+
+    private static string NormalizeProfilePath(string path) =>
+        path.Replace('\\', '/');
+
+    private static string BuildSyntheticProfileId(string storeId, string normalizedPath)
+    {
+        byte[] hash = MD5.HashData(Encoding.UTF8.GetBytes(normalizedPath));
+        return $"store-{storeId}-{Convert.ToHexStringLower(hash)}";
+    }
+
+    private sealed record FirefoxStoreProfileInfo(string Path, string Name);
 }
