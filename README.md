@@ -1,5 +1,10 @@
 # Browser Wrangler
 
+[![CI](https://github.com/damianh/browser-wrangler/actions/workflows/ci.yml/badge.svg)](https://github.com/damianh/browser-wrangler/actions/workflows/ci.yml)
+[![Release](https://github.com/damianh/browser-wrangler/actions/workflows/release.yml/badge.svg)](https://github.com/damianh/browser-wrangler/actions/workflows/release.yml)
+[![GitHub release](https://img.shields.io/github/v/release/damianh/browser-wrangler)](https://github.com/damianh/browser-wrangler/releases/latest)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+
 Browser Wrangler registers itself as a browser on Windows, intercepts the links
 you click, and routes them to the right browser and profile based on rules you
 define — with an optional picker popup and toast notifications.
@@ -7,15 +12,50 @@ define — with an optional picker popup and toast notifications.
 It is a .NET 10 / WinUI 3 fork of [Browser Tamer](https://github.com/aloneguid/bt)
 by [aloneguid](https://github.com/aloneguid), licensed under the Apache License 2.0.
 
-## Features (MVP)
+## Installation
 
-- **Register as a browser** — per-user registry (no admin), health checks with one-click fixes
-- **Browser & profile discovery** — installed browsers, Chromium profiles (Local State), Firefox profiles (profiles.ini), incognito/private entries
-- **Rules engine** — substring/regex match on whole URL, domain or path; priority ordering; fallback default profile; bt-compatible rule syntax (`scope:domain|priority:2|github.com`)
+```pwsh
+winget install DamianH.BrowserWrangler
+```
+
+Or grab the installer / portable zip from the
+[latest release](https://github.com/damianh/browser-wrangler/releases/latest)
+(x64 and ARM64). Installs per-user — no admin required.
+
+After installing, set Browser Wrangler as your default browser in
+**Windows Settings → Apps → Default apps**.
+
+## Features
+
+- **Registers as a browser** — per-user registry (no admin), health checks with one-click fixes
+- **Browser & profile discovery** — installed browsers, Chromium profiles, Firefox profiles, incognito/private entries, with real profile avatars
+- **Rules engine** — substring/regex match on whole URL, domain or path; drag-to-reorder priority; fallback default profile; bt-compatible rule syntax (`scope:domain|priority:2|github.com`)
 - **URL pipeline** — find/replace substitutions (`substr|find|replace`, `rgx|find|replace`)
-- **Picker** — popup at cursor listing browsers/profiles; triggered by hotkeys (Ctrl+Shift etc.), rule conflicts, or no-match
+- **Picker** — popup listing browsers/profiles with number-key shortcuts; triggered by hotkeys (Ctrl+Shift etc.), rule conflicts, or no-match
 - **Toast** — brief notification showing which rule routed to which browser
-- **Fast cold-start** — URL invocations route and launch without initializing XAML unless UI is needed
+- **Fast cold-start** — URL invocations route and launch without initializing XAML unless UI is needed; ReadyToRun-compiled releases
+- **No background process** — runs on demand per click, exits when done
+
+## Screenshots
+
+### Browsers
+
+Toggle which browsers and profiles appear in the picker.
+
+![Browsers page](docs/img/browsers.png)
+
+### Rules
+
+Drag to reorder — topmost matching rule wins. Test any URL against your rules.
+
+![Rules page](docs/img/rules.png)
+
+### Picker
+
+Pops up when a URL matches multiple rules, no rules, or when you hold a hotkey.
+Pick with the mouse or number keys.
+
+![Picker](docs/img/picker.png)
 
 ## Building
 
@@ -35,6 +75,7 @@ browser in Windows Settings.
 - `src/BrowserWrangler.Core` — models, discovery, rules, pipeline, registry setup, launching (no UI deps)
 - `src/BrowserWrangler` — WinUI 3 app: config UI, picker, toast
 - `tests/BrowserWrangler.Core.Tests` — xUnit tests
+- `installer/` — Inno Setup script and winget manifest templates
 
 ## License
 
