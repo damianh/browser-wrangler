@@ -81,13 +81,13 @@ public sealed partial class BrowsersPage : Page
             });
             var hide = new ToggleSwitch
             {
-                OnContent = "Hidden",
-                OffContent = "Visible",
-                IsOn = browser.IsHidden,
+                OnContent = "Visible",
+                OffContent = "Hidden",
+                IsOn = !browser.IsHidden,
             };
             hide.Toggled += (_, _) =>
             {
-                browser.IsHidden = hide.IsOn;
+                browser.IsHidden = !hide.IsOn;
                 AppState.Save();
             };
             header.Children.Add(hide);
@@ -114,10 +114,10 @@ public sealed partial class BrowsersPage : Page
                 }
 
                 row.Children.Add(new TextBlock { Text = profile.Name, VerticalAlignment = VerticalAlignment.Center, MinWidth = 180 });
-                var profileHide = new CheckBox { Content = "Hide", IsChecked = profile.IsHidden };
+                var profileHide = new CheckBox { Content = "Visible", IsChecked = !profile.IsHidden };
                 profileHide.Click += (_, _) =>
                 {
-                    profile.IsHidden = profileHide.IsChecked == true;
+                    profile.IsHidden = profileHide.IsChecked != true;
                     AppState.Save();
                 };
                 row.Children.Add(profileHide);
