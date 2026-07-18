@@ -92,6 +92,7 @@ jobs:
     runs-on: windows-latest
     env:
       VERSION: ${{ needs.version.outputs.version }}
+      HAS_WINGET_TOKEN: ${{ secrets.WINGET_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -127,7 +128,7 @@ jobs:
       # Submits to microsoft/winget-pkgs when a classic PAT with public_repo
       # scope is stored in the WINGET_TOKEN secret. Skipped otherwise.
       - name: Submit to winget-pkgs
-        if: ${{ secrets.WINGET_TOKEN != '' }}
+        if: ${{ env.HAS_WINGET_TOKEN == 'true' }}
         env:
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
