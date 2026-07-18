@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      # Versioning strategy: YYYY.MMDD.buildrun (e.g. 2026.0718.42)
+      - id: v
+        run: echo "version=$(date -u +%Y.%m%d).${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      PLATFORM: ${{ matrix.arch == 'arm64' && 'ARM64' || 'x64' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Test
+        if: matrix.arch == 'x64'
+        run: dotnet test tests\BrowserWrangler.Core.Tests -c Release
+
+      - name: Publish (self-contained, ReadyToRun)
+        run: >
+          dotnet publish src\BrowserWrangler -c Release
+          -r win-${{ matrix.arch }}
+          -p:Platform=${{ env.PLATFORM }}
+          -p:PublishReadyToRun=true
+          --self-contained
+          -p:Version=${{ env.VERSION }}
+          -o publish\${{ matrix.arch }}
+
+      - name: Zip
+        run: Compress-Archive -Path publish\${{ matrix.arch }}\* -DestinationPath BrowserWrangler-${{ env.VERSION }}-${{ matrix.arch }}.zip
+
+      - name: Stamp MSIX manifest version
+        run: >
+          (Get-Content src\BrowserWrangler\Package.appxmanifest) -replace
+          'Version="1\.0\.0\.0"', ('Version="' + $env:VERSION + '.0"') |
+          Set-Content src\BrowserWrangler\Package.appxmanifest
+
+      - name: Build MSIX
+        run: >
+          msbuild src\BrowserWrangler\BrowserWrangler.csproj
+          /restore /nologo /v:minimal
+          /p:Configuration=Release
+          /p:Platform=${{ env.PLATFORM }}
+          /p:RuntimeIdentifier=win-${{ matrix.arch }}
+          /p:WindowsPackageType=MSIX
+          /p:GenerateAppxPackageOnBuild=true
+          /p:AppxPackageDir=${{ github.workspace }}\msix\
+          /p:UapAppxPackageBuildMode=SideloadOnly
+          /p:AppxBundle=Never
+          /p:AppxPackageSigningEnabled=false
+          /p:PublishReadyToRun=true
+          /p:SelfContained=true
+          /p:Version=${{ env.VERSION }}
+
+      - name: Collect MSIX
+        run: Get-ChildItem msix -Recurse -Filter *.msix | Select-Object -First 1 | Copy-Item -Destination BrowserWrangler-${{ env.VERSION }}-${{ matrix.arch }}.msix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.arch }}
+          path: |
+            BrowserWrangler-*.zip
+            BrowserWrangler-*.msix
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: >
+          gh release create "v$VERSION"
+          --repo "$GITHUB_REPOSITORY"
+          --title "Browser Wrangler $VERSION"
+          --generate-notes
+          BrowserWrangler-*.zip BrowserWrangler-*.msix
