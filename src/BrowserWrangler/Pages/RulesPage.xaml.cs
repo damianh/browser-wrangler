@@ -92,7 +92,7 @@ public sealed partial class RulesPage : Page
         grid.Children.Add(handle);
 
         // location: URL / Title / Process
-        var location = new ComboBox { MinWidth = 105, VerticalAlignment = VerticalAlignment.Center };
+        var location = new ComboBox { Width = 110, VerticalAlignment = VerticalAlignment.Center };
         location.Items.Add("URL");
         location.Items.Add("Title");
         location.Items.Add("Process");
@@ -118,18 +118,46 @@ public sealed partial class RulesPage : Page
         Grid.SetColumn(value, 2);
         grid.Children.Add(value);
 
-        // scope (URL only)
-        var scope = new ComboBox { MinWidth = 130, VerticalAlignment = VerticalAlignment.Center };
-        scope.Items.Add("Anywhere in URL");
-        scope.Items.Add("Domain only");
-        scope.Items.Add("Path only");
-        scope.SelectedIndex = (int)entry.Rule.Scope;
-        scope.IsEnabled = entry.Rule.Location == MatchLocation.Url;
-        scope.SelectionChanged += (_, _) =>
+        // scope (URL only): icon-only dropdown, expands to icon + text
+        (string Glyph, string Label)[] scopes =
+        [
+            ("\uE71B", "Anywhere in URL"),
+            ("\uE774", "Domain only"),
+            ("\uED25", "Path only"),
+        ];
+        var scopeIcon = new FontIcon { FontSize = 14 };
+        var scope = new DropDownButton
         {
-            entry.Rule.Scope = (MatchScope)scope.SelectedIndex;
-            Save();
+            Content = scopeIcon,
+            Width = 64,
+            VerticalAlignment = VerticalAlignment.Center,
         };
+        var scopeFlyout = new MenuFlyout { Placement = FlyoutPlacementMode.Bottom };
+        void SetScope(int index, bool save)
+        {
+            scopeIcon.Glyph = scopes[index].Glyph;
+            ToolTipService.SetToolTip(scope, $"Match scope: {scopes[index].Label}");
+            if (save)
+            {
+                entry.Rule.Scope = (MatchScope)index;
+                Save();
+            }
+        }
+
+        foreach (int i in Enumerable.Range(0, scopes.Length))
+        {
+            var item = new MenuFlyoutItem
+            {
+                Text = scopes[i].Label,
+                Icon = new FontIcon { Glyph = scopes[i].Glyph },
+            };
+            item.Click += (_, _) => SetScope(i, save: true);
+            scopeFlyout.Items.Add(item);
+        }
+
+        scope.Flyout = scopeFlyout;
+        SetScope((int)entry.Rule.Scope, save: false);
+        scope.IsEnabled = entry.Rule.Location == MatchLocation.Url;
         location.SelectionChanged += (_, _) =>
         {
             entry.Rule.Location = (MatchLocation)location.SelectedIndex;
@@ -140,7 +168,7 @@ public sealed partial class RulesPage : Page
         grid.Children.Add(scope);
 
         // target browser/profile
-        var target = new ComboBox { MinWidth = 190, VerticalAlignment = VerticalAlignment.Center };
+        var target = new ComboBox { Width = 200, VerticalAlignment = VerticalAlignment.Center };
         foreach (BrowserProfile profile in _profiles)
         {
             target.Items.Add(profile.BestDisplayName);
