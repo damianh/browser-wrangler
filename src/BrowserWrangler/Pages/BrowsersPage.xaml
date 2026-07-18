@@ -21,7 +21,7 @@
             <TextBlock VerticalAlignment="Center" Text="Default profile:" />
             <ComboBox x:Name="DefaultProfileCombo" MinWidth="260" SelectionChanged="DefaultProfile_Changed" />
         </StackPanel>
-        <ScrollViewer Grid.Row="2">
+        <ScrollViewer Grid.Row="2" Padding="0,0,16,0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="BrowserList" HorizontalAlignment="Left" MaxWidth="640" MinWidth="560" Spacing="8" />
         </ScrollViewer>
     </Grid>
