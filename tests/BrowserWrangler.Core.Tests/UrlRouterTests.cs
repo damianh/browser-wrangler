@@ -158,6 +158,22 @@ public class BrowserLauncherTests
     }
 
     [Fact]
+    public void BuildArguments_does_not_reprocess_placeholder_text_inside_url()
+    {
+        var b = new Browser("f", "Firefox", @"C:\firefox.exe") { Engine = BrowserEngine.Gecko };
+        var p = new BrowserProfile(
+            b,
+            "container",
+            "Work",
+            $"\"encoded={BrowserProfile.UrlEncodedArgName}&raw={BrowserProfile.UrlArgName}\"");
+        const string rawUrl = "https://example.com/%url_encoded%?x=%url%";
+
+        string args = BrowserLauncher.BuildArguments(p, new ClickPayload(rawUrl));
+
+        Assert.Equal($"\"encoded={Uri.EscapeDataString(rawUrl)}&raw={rawUrl}\"", args);
+    }
+
+    [Fact]
     public void BuildArguments_empty_launch_arg_uses_url()
     {
         var b = new Browser("x", "X", @"C:\x.exe");
