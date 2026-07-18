@@ -4,8 +4,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border
         Background="{ThemeResource LayerFillColorDefaultBrush}"
-        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-        BorderThickness="1"
         CornerRadius="8">
         <Grid>
             <Grid.RowDefinitions>
@@ -13,13 +11,22 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Grid Padding="12,8,8,8" ColumnSpacing="8" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+            <Grid Padding="12,10,8,10" ColumnSpacing="8" RowSpacing="2" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock
+                    FontSize="14"
+                    FontWeight="SemiBold"
+                    Text="Open with" />
+                <TextBlock
                     x:Name="UrlText"
+                    Grid.Row="1"
                     VerticalAlignment="Center"
                     FontSize="12"
                     Opacity="0.7"
@@ -29,6 +36,8 @@
                 <Button
                     x:Name="CopyButton"
                     Grid.Column="1"
+                    Grid.RowSpan="2"
+                    VerticalAlignment="Top"
                     Padding="6"
                     Background="Transparent"
                     BorderBrush="Transparent"

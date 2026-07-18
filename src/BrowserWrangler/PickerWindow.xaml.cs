@@ -32,6 +32,8 @@ public sealed partial class PickerWindow : Window
 
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWCP_ROUND = 2;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const uint DWMWA_COLOR_NONE = 0xFFFFFFFE;
 
     private struct NativePoint
     {
@@ -40,7 +42,7 @@ public sealed partial class PickerWindow : Window
     }
 
     private const int RowHeight = 44;
-    private const int HeaderHeight = 56;
+    private const int HeaderHeight = 78;
     private const int WindowWidth = 480;
     private const int MaxVisibleRows = 10;
 
@@ -135,10 +137,13 @@ public sealed partial class PickerWindow : Window
         appWindow.SetPresenter(presenter);
         appWindow.IsShownInSwitchers = false;
 
-        // round the actual window corners so they match the XAML border
+        // round the actual window corners so they match the XAML border,
+        // and remove the native DWM border so only the XAML 1px stroke shows
         nint hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         int corner = DWMWCP_ROUND;
         _ = DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+        int none = unchecked((int)DWMWA_COLOR_NONE);
+        _ = DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref none, sizeof(int));
 
         int rows = Math.Min(Math.Max(_profiles.Count, 1), MaxVisibleRows);
         double scale = GetDpiForWindow(hwnd) / 96.0;
