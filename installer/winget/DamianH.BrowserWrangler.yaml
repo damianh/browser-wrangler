@@ -1,5 +1,5 @@
 # Filled by CI: {VERSION}
-PackageIdentifier: DamianHickey.BrowserWrangler
+PackageIdentifier: DamianH.BrowserWrangler
 PackageVersion: "{VERSION}"
 DefaultLocale: en-US
 ManifestType: version

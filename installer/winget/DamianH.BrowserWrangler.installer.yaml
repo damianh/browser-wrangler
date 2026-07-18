@@ -1,5 +1,5 @@
 # Filled by CI: {VERSION}, {X64_URL}, {X64_SHA256}, {ARM64_URL}, {ARM64_SHA256}
-PackageIdentifier: DamianHickey.BrowserWrangler
+PackageIdentifier: DamianH.BrowserWrangler
 PackageVersion: "{VERSION}"
 InstallerType: inno
 Scope: user

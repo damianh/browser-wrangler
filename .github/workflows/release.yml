@@ -106,7 +106,7 @@ jobs:
           if (-not $x64) { $x64 = Get-ChildItem -Recurse -Filter "BrowserWrangler-$env:VERSION-x64-setup.exe" | Select-Object -First 1 }
           $arm = Get-ChildItem -Recurse -Filter "BrowserWrangler-$env:VERSION-arm64-setup.exe" | Select-Object -First 1
           $base = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v$env:VERSION"
-          $out = "manifests\d\DamianHickey\BrowserWrangler\$env:VERSION"
+          $out = "manifests\d\DamianH\BrowserWrangler\$env:VERSION"
           New-Item -ItemType Directory -Force $out | Out-Null
           foreach ($f in Get-ChildItem installer\winget\*.yaml) {
             (Get-Content $f -Raw) `
@@ -132,4 +132,4 @@ jobs:
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-          .\wingetcreate.exe submit --token $env:WINGET_TOKEN "manifests\d\DamianHickey\BrowserWrangler\$env:VERSION"
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN "manifests\d\DamianH\BrowserWrangler\$env:VERSION"
