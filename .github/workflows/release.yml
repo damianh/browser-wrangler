@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      # Versioning strategy: YYYY.MMDD.buildrun (e.g. 2026.0718.42)
+      - id: v
+        run: echo "version=$(date -u +%Y.%m%d).${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      PLATFORM: ${{ matrix.arch == 'arm64' && 'ARM64' || 'x64' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        if: matrix.arch == 'x64'
+        run: dotnet test tests\BrowserWrangler.Core.Tests -c Release
+
+      - name: Publish (self-contained, ReadyToRun)
+        run: >
+          dotnet publish src\BrowserWrangler -c Release
+          -r win-${{ matrix.arch }}
+          -p:Platform=${{ env.PLATFORM }}
+          -p:PublishReadyToRun=true
+          --self-contained
+          -p:Version=${{ env.VERSION }}
+          -o publish\${{ matrix.arch }}
+
+      - name: Zip (portable)
+        run: Compress-Archive -Path publish\${{ matrix.arch }}\* -DestinationPath BrowserWrangler-${{ env.VERSION }}-${{ matrix.arch }}.zip
+
+      - name: Build installer (Inno Setup, per-user)
+        run: >
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          /DAppVersion=${{ env.VERSION }}
+          /DSourceDir=${{ github.workspace }}\publish\${{ matrix.arch }}
+          /DArch=${{ matrix.arch }}
+          installer\BrowserWrangler.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.arch }}
+          path: |
+            BrowserWrangler-*.zip
+            installer\output\BrowserWrangler-*-setup.exe
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          find . -name 'BrowserWrangler-*' -exec mv {} . \; 2>/dev/null || true
+          gh release create "v$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Browser Wrangler $VERSION" \
+            --generate-notes \
+            BrowserWrangler-*.zip BrowserWrangler-*-setup.exe
+
+  winget:
+    needs: [version, release]
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+
+      - name: Generate winget manifests
+        run: |
+          $x64 = Get-Item "BrowserWrangler-$env:VERSION-x64-setup.exe" -ErrorAction SilentlyContinue
+          if (-not $x64) { $x64 = Get-ChildItem -Recurse -Filter "BrowserWrangler-$env:VERSION-x64-setup.exe" | Select-Object -First 1 }
+          $arm = Get-ChildItem -Recurse -Filter "BrowserWrangler-$env:VERSION-arm64-setup.exe" | Select-Object -First 1
+          $base = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v$env:VERSION"
+          $out = "manifests\d\DamianH\BrowserWrangler\$env:VERSION"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          foreach ($f in Get-ChildItem installer\winget\*.yaml) {
+            (Get-Content $f -Raw) `
+              -replace '\{VERSION\}', $env:VERSION `
+              -replace '\{X64_URL\}', "$base/BrowserWrangler-$env:VERSION-x64-setup.exe" `
+              -replace '\{X64_SHA256\}', (Get-FileHash $x64.FullName -Algorithm SHA256).Hash `
+              -replace '\{ARM64_URL\}', "$base/BrowserWrangler-$env:VERSION-arm64-setup.exe" `
+              -replace '\{ARM64_SHA256\}', (Get-FileHash $arm.FullName -Algorithm SHA256).Hash |
+              Set-Content (Join-Path $out $f.Name) -Encoding utf8
+          }
+          Get-ChildItem $out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests
+          path: manifests
+
+      # Submits to microsoft/winget-pkgs when a classic PAT with public_repo
+      # scope is stored in the WINGET_TOKEN secret. Skipped otherwise.
+      - name: Submit to winget-pkgs
+        if: ${{ secrets.WINGET_TOKEN != '' }}
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN "manifests\d\DamianH\BrowserWrangler\$env:VERSION"

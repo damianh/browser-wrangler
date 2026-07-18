@@ -1,0 +1,16 @@
+<Page
+    x:Class="BrowserWrangler.Pages.AboutPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Padding="24" Spacing="12" MaxWidth="640" HorizontalAlignment="Left">
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Browser Wrangler" />
+        <TextBlock x:Name="VersionText" Opacity="0.7" />
+        <TextBlock TextWrapping="Wrap"
+                   Text="Redirects URLs you click to the right browser and profile, based on rules you define." />
+        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Attribution" />
+        <TextBlock TextWrapping="Wrap"
+                   Text="Browser Wrangler is a .NET / WinUI 3 fork of Browser Tamer by aloneguid, licensed under the Apache License 2.0. Portions of the design and behaviour are derived from that project." />
+        <HyperlinkButton Content="Report an issue" NavigateUri="https://github.com/damianh/browser-wrangler/issues" />
+        <HyperlinkButton Content="Apache License 2.0" NavigateUri="https://www.apache.org/licenses/LICENSE-2.0" />
+    </StackPanel>
+</Page>

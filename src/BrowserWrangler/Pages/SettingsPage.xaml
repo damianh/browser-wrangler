@@ -1,0 +1,46 @@
+<Page
+    x:Class="BrowserWrangler.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="8" MaxWidth="640" HorizontalAlignment="Left">
+            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Settings" />
+
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="Picker" />
+            <TextBlock
+                FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                Text="The picker is a popup that lets you choose a browser for the link you just clicked." />
+
+            <RadioButtons
+                x:Name="PickerModeGroup"
+                Margin="0,8,0,0"
+                Header="Show the picker"
+                SelectionChanged="PickerMode_Changed">
+                <RadioButton Content="Never automatically" />
+                <RadioButton Content="When multiple rules match" />
+                <RadioButton Content="When multiple rules match, or none match" />
+                <RadioButton Content="Always, for every link" />
+            </RadioButtons>
+
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Force with a hotkey" />
+            <TextBlock
+                FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                Text="Holding any of these while clicking a link always opens the picker, whatever the mode above." />
+            <CheckBox x:Name="PickerCtrlShift" Content="Ctrl + Shift + click" Click="Setting_Changed" />
+            <CheckBox x:Name="PickerCtrlAlt" Content="Ctrl + Alt + click" Click="Setting_Changed" />
+            <CheckBox x:Name="PickerAltShift" Content="Alt + Shift + click" Click="Setting_Changed" />
+            <CheckBox x:Name="PickerCapsLock" Content="Caps Lock is on" Click="Setting_Changed" />
+
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Behavior" />
+            <ToggleSwitch x:Name="PickerCloseOnFocusLoss" Header="Close the picker when it loses focus" Toggled="Setting_Changed" />
+
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="Toast" />
+            <ToggleSwitch x:Name="ToastEnabled" Header="Show toast when a URL is routed" Toggled="Setting_Changed" />
+            <Slider
+                x:Name="ToastDuration"
+                Header="Toast duration (seconds)"
+                Minimum="1" Maximum="10" StepFrequency="1"
+                ValueChanged="Slider_Changed" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

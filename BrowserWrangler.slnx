@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BrowserWrangler/BrowserWrangler.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="src/BrowserWrangler.Core/BrowserWrangler.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BrowserWrangler.Core.Tests/BrowserWrangler.Core.Tests.csproj" />
+  </Folder>
+</Solution>

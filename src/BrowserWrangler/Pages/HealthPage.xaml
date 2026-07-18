@@ -1,0 +1,20 @@
+<Page
+    x:Class="BrowserWrangler.Pages.HealthPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Health" />
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12">
+            <Button Click="Register_Click" Style="{StaticResource AccentButtonStyle}" Content="Register as browser" />
+            <Button Click="Unregister_Click" Content="Unregister" />
+            <Button Click="DefaultApps_Click" Content="Open Default Apps" />
+            <Button Click="Recheck_Click" Content="Re-check" />
+        </StackPanel>
+        <StackPanel x:Name="CheckList" Grid.Row="2" Spacing="8" />
+    </Grid>
+</Page>

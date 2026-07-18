@@ -1,0 +1,28 @@
+<Page
+    x:Class="BrowserWrangler.Pages.BrowsersPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Browsers" />
+            <Button Click="Refresh_Click" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon FontSize="14" Glyph="&#xE72C;" />
+                    <TextBlock Text="Rediscover" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <TextBlock VerticalAlignment="Center" Text="Default profile:" />
+            <ComboBox x:Name="DefaultProfileCombo" MinWidth="260" SelectionChanged="DefaultProfile_Changed" />
+        </StackPanel>
+        <ScrollViewer Grid.Row="2">
+            <StackPanel x:Name="BrowserList" HorizontalAlignment="Left" MaxWidth="640" MinWidth="560" Spacing="8" />
+        </ScrollViewer>
+    </Grid>
+</Page>

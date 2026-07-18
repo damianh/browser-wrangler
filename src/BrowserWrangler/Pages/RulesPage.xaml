@@ -1,0 +1,53 @@
+<Page
+    x:Class="BrowserWrangler.Pages.RulesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Rules" />
+        <TextBlock
+            Grid.Row="1"
+            FontSize="12"
+            Opacity="0.7"
+            TextWrapping="Wrap"
+            Text="Each rule routes matching links to a browser. Drag rules to reorder — when several match, the one nearest the top wins. If nothing matches, the default profile opens." />
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+            <Button Click="Add_Click" Style="{StaticResource AccentButtonStyle}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon FontSize="14" Glyph="&#xE710;" />
+                    <TextBlock Text="Add rule" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+        <ListView
+            x:Name="RuleListView"
+            Grid.Row="3"
+            AllowDrop="True"
+            CanDragItems="True"
+            CanReorderItems="True"
+            ReorderMode="Enabled"
+            SelectionMode="None">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,0,0,8" />
+                </Style>
+            </ListView.ItemContainerStyle>
+        </ListView>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="12">
+            <TextBox x:Name="TestUrlBox" MinWidth="320" PlaceholderText="Test a URL against the rules..." />
+            <Button Click="Test_Click" Content="Test" />
+        </StackPanel>
+    </Grid>
+</Page>

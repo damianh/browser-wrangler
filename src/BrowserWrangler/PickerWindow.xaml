@@ -1,0 +1,55 @@
+<Window
+    x:Class="BrowserWrangler.PickerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border
+        Background="{ThemeResource LayerFillColorDefaultBrush}"
+        CornerRadius="8">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Padding="12,10,8,10" ColumnSpacing="8" RowSpacing="2" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    FontSize="14"
+                    FontWeight="SemiBold"
+                    Text="Open with" />
+                <TextBlock
+                    x:Name="UrlText"
+                    Grid.Row="1"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Opacity="0.7"
+                    TextWrapping="Wrap"
+                    MaxLines="2"
+                    TextTrimming="CharacterEllipsis" />
+                <Button
+                    x:Name="CopyButton"
+                    Grid.Column="1"
+                    Grid.RowSpan="2"
+                    VerticalAlignment="Top"
+                    Padding="6"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    Click="Copy_Click"
+                    ToolTipService.ToolTip="Copy URL and close">
+                    <FontIcon FontSize="13" Glyph="&#xE8C8;" />
+                </Button>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="ProfileList" Padding="6" Spacing="2" />
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>
