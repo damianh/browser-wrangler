@@ -3,6 +3,7 @@ using BrowserWrangler.Core.Configuration;
 using BrowserWrangler.Core.Launching;
 using BrowserWrangler.Core.Models;
 using BrowserWrangler.Core.Rules;
+using BrowserWrangler.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
@@ -98,6 +99,7 @@ public static class Program
         {
             case RouteAction.Open:
                 BrowserMatchResult match = decision.Matches[0];
+                RuleHitLogger.LogDirectOpen(config, decision.Payload, match);
                 BrowserLauncher.Launch(match.Profile, decision.Payload);
                 if (config.Toast.ShowOnOpen)
                 {
