@@ -60,7 +60,7 @@ jobs:
           /DArch=${{ matrix.arch }}
           installer\BrowserWrangler.iss
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: packages-${{ matrix.arch }}
           path: |
@@ -124,7 +124,7 @@ jobs:
           }
           Get-ChildItem $out
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: winget-manifests
           path: manifests
