@@ -60,8 +60,13 @@ public sealed partial class BrowsersPage : Page
         foreach (Browser browser in AppState.Config.Browsers)
         {
             var panel = new StackPanel { Spacing = 4 };
+            var profileToggles = new List<ToggleSwitch>();
 
-            var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+            // header row: icon | name | (spacer) | toggle
+            var header = new Grid { ColumnSpacing = 12 };
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             if (IconLoader.GetIconForExe(browser.OpenCommand) is { } browserIcon)
             {
                 header.Children.Add(new Image
@@ -73,23 +78,33 @@ public sealed partial class BrowsersPage : Page
                 });
             }
 
-            header.Children.Add(new TextBlock
+            var name = new TextBlock
             {
                 Text = browser.Name,
                 Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
                 VerticalAlignment = VerticalAlignment.Center,
-            });
+            };
+            Grid.SetColumn(name, 1);
+            header.Children.Add(name);
             var hide = new ToggleSwitch
             {
-                OnContent = "Visible",
-                OffContent = "Hidden",
                 IsOn = !browser.IsHidden,
+                OnContent = null,
+                OffContent = null,
+                MinWidth = 0,
             };
+            ToolTipService.SetToolTip(hide, "Show this browser in pickers and dropdowns");
             hide.Toggled += (_, _) =>
             {
                 browser.IsHidden = !hide.IsOn;
+                foreach (ToggleSwitch t in profileToggles)
+                {
+                    t.IsEnabled = hide.IsOn;
+                }
+
                 AppState.Save();
             };
+            Grid.SetColumn(hide, 2);
             header.Children.Add(hide);
             panel.Children.Add(header);
             panel.Children.Add(new TextBlock
@@ -101,7 +116,12 @@ public sealed partial class BrowsersPage : Page
 
             foreach (BrowserProfile profile in browser.Profiles)
             {
-                var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
+                // profile row: icon | name | rules | (spacer) | toggle
+                var row = new Grid { ColumnSpacing = 8, Margin = new Thickness(16, 0, 0, 0) };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 if (IconLoader.GetIconForProfile(profile) is { } profileIcon)
                 {
                     row.Children.Add(new Image
@@ -113,25 +133,34 @@ public sealed partial class BrowsersPage : Page
                     });
                 }
 
-                row.Children.Add(new TextBlock { Text = profile.Name, VerticalAlignment = VerticalAlignment.Center, MinWidth = 180 });
+                var profileName = new TextBlock { Text = profile.Name, VerticalAlignment = VerticalAlignment.Center };
+                Grid.SetColumn(profileName, 1);
+                row.Children.Add(profileName);
+                var rules = new TextBlock
+                {
+                    Text = profile.Rules.Count == 1 ? "1 rule" : $"{profile.Rules.Count} rules",
+                    Opacity = 0.6,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                Grid.SetColumn(rules, 2);
+                row.Children.Add(rules);
                 var profileHide = new ToggleSwitch
                 {
-                    OnContent = "Visible",
-                    OffContent = "Hidden",
                     IsOn = !profile.IsHidden,
+                    OnContent = null,
+                    OffContent = null,
+                    MinWidth = 0,
+                    IsEnabled = !browser.IsHidden,
                 };
+                ToolTipService.SetToolTip(profileHide, "Show this profile in pickers and dropdowns");
                 profileHide.Toggled += (_, _) =>
                 {
                     profile.IsHidden = !profileHide.IsOn;
                     AppState.Save();
                 };
+                profileToggles.Add(profileHide);
+                Grid.SetColumn(profileHide, 3);
                 row.Children.Add(profileHide);
-                row.Children.Add(new TextBlock
-                {
-                    Text = profile.Rules.Count == 1 ? "1 rule" : $"{profile.Rules.Count} rules",
-                    Opacity = 0.6,
-                    VerticalAlignment = VerticalAlignment.Center,
-                });
                 panel.Children.Add(row);
             }
 
