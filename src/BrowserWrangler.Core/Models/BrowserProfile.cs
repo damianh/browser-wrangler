@@ -10,6 +10,7 @@ public sealed class BrowserProfile
 {
     /// <summary>Placeholder replaced with the URL in launch arguments.</summary>
     public const string UrlArgName = "%url%";
+    public const string UrlEncodedArgName = "%url_encoded%";
 
     public BrowserProfile() { }
 

@@ -28,7 +28,7 @@ After installing, set Browser Wrangler as your default browser in
 ## Features
 
 - **Registers as a browser** — per-user registry (no admin), health checks with one-click fixes
-- **Browser & profile discovery** — installed browsers, Chromium profiles, Firefox profiles, incognito/private entries, with real profile avatars
+- **Browser & profile discovery** — installed browsers, Chromium profiles, Firefox profiles, Firefox Multi-Account Containers, incognito/private entries, with real profile avatars
 - **Rules engine** — substring/regex match on whole URL, domain or path; drag-to-reorder priority; fallback default profile; bt-compatible rule syntax (`scope:domain|priority:2|github.com`)
 - **URL pipeline** — Outlook Safelinks unwrap, optional shortened-link expansion, and find/replace substitutions (`substr|find|replace`, `rgx|find|replace`)
 - **Picker** — popup listing browsers/profiles with number-key shortcuts; triggered by hotkeys (Ctrl+Shift etc.), rule conflicts, or no-match
@@ -56,6 +56,14 @@ Pops up when a URL matches multiple rules, no rules, or when you hold a hotkey.
 Pick with the mouse or number keys.
 
 ![Picker](docs/img/picker.png)
+
+## Firefox containers
+
+Browser Wrangler can route links to Firefox Multi-Account Containers as profile targets.
+
+This requires the Firefox extension
+[Open external links in a container](https://addons.mozilla.org/firefox/addon/open-url-in-container/)
+to be installed in Firefox.
 
 ## Building
 
