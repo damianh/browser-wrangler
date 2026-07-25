@@ -82,12 +82,14 @@ public sealed partial class MainWindow : Window
             return; // keep the last restored bounds
         }
 
-        WindowSettings s = AppState.Config.Window;
-        s.Width = AppWindow.Size.Width;
-        s.Height = AppWindow.Size.Height;
-        s.X = AppWindow.Position.X;
-        s.Y = AppWindow.Position.Y;
-        AppState.Save();
+        AppState.MutateAndSave(config =>
+        {
+            WindowSettings s = config.Window;
+            s.Width = AppWindow.Size.Width;
+            s.Height = AppWindow.Size.Height;
+            s.X = AppWindow.Position.X;
+            s.Y = AppWindow.Position.Y;
+        });
     }
 
     private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)

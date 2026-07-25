@@ -60,13 +60,14 @@ public sealed partial class RulesPage : Page
             return;
         }
 
-        int priority = _rows.Count;
-        foreach (Border row in _rows)
+        Save(() =>
         {
-            ((RuleEntry)row.Tag).Rule.Priority = priority--;
-        }
-
-        AppState.Save();
+            int priority = _rows.Count;
+            foreach (Border row in _rows)
+            {
+                ((RuleEntry)row.Tag).Rule.Priority = priority--;
+            }
+        });
     }
 
     private Border BuildRow(RuleEntry entry)
@@ -122,8 +123,7 @@ public sealed partial class RulesPage : Page
         {
             if (entry.Rule.Value != value.Text)
             {
-                entry.Rule.Value = value.Text;
-                Save();
+                Save(() => entry.Rule.Value = value.Text);
             }
         };
         Grid.SetColumn(value, 1);
@@ -152,8 +152,7 @@ public sealed partial class RulesPage : Page
             ToolTipService.SetToolTip(scope, $"Match scope: {scopes[index].Label}");
             if (save)
             {
-                entry.Rule.Scope = (MatchScope)index;
-                Save();
+                Save(() => entry.Rule.Scope = (MatchScope)index);
             }
         }
 
@@ -173,9 +172,8 @@ public sealed partial class RulesPage : Page
         scope.IsEnabled = entry.Rule.Location == MatchLocation.Url;
         location.SelectionChanged += (_, _) =>
         {
-            entry.Rule.Location = (MatchLocation)location.SelectedIndex;
+            Save(() => entry.Rule.Location = (MatchLocation)location.SelectedIndex);
             scope.IsEnabled = location.SelectedIndex == 0;
-            Save();
         };
         Grid.SetColumn(scope, 1);
         controls.Children.Add(scope);
@@ -214,10 +212,12 @@ public sealed partial class RulesPage : Page
                 return;
             }
 
-            entry.Profile.Rules.Remove(entry.Rule);
-            entry.Profile = _profiles[target.SelectedIndex];
-            entry.Profile.Rules.Add(entry.Rule);
-            Save();
+            Save(() =>
+            {
+                entry.Profile.Rules.Remove(entry.Rule);
+                entry.Profile = _profiles[target.SelectedIndex];
+                entry.Profile.Rules.Add(entry.Rule);
+            });
         };
         Grid.SetColumn(target, 2);
         controls.Children.Add(target);
@@ -228,8 +228,7 @@ public sealed partial class RulesPage : Page
         ToolTipService.SetToolTip(regex, "Regular expression (must match the whole input)");
         regex.Click += (_, _) =>
         {
-            entry.Rule.IsRegex = regex.IsChecked == true;
-            Save();
+            Save(() => entry.Rule.IsRegex = regex.IsChecked == true);
         };
         toggles.Children.Add(regex);
         var appMode = new ToggleButton { IsChecked = entry.Rule.AppMode, Height = 32, Padding = new Thickness(8, 0, 8, 0) };
@@ -237,8 +236,7 @@ public sealed partial class RulesPage : Page
         ToolTipService.SetToolTip(appMode, "Open in app mode (frameless window, Chromium only)");
         appMode.Click += (_, _) =>
         {
-            entry.Rule.AppMode = appMode.IsChecked == true;
-            Save();
+            Save(() => entry.Rule.AppMode = appMode.IsChecked == true);
         };
         toggles.Children.Add(appMode);
         Grid.SetColumn(toggles, 3);
@@ -256,9 +254,16 @@ public sealed partial class RulesPage : Page
         };
         delete.Click += (_, _) =>
         {
-            entry.Profile.Rules.Remove(entry.Rule);
             _rows.Remove(row);
-            PersistOrder();
+            Save(() =>
+            {
+                entry.Profile.Rules.Remove(entry.Rule);
+                int priority = _rows.Count;
+                foreach (Border existingRow in _rows)
+                {
+                    ((RuleEntry)existingRow.Tag).Rule.Priority = priority--;
+                }
+            });
         };
         Grid.SetColumn(delete, 5);
         controls.Children.Add(delete);
@@ -267,11 +272,11 @@ public sealed partial class RulesPage : Page
         return row;
     }
 
-    private void Save()
+    private void Save(Action mutator)
     {
         if (!_loading)
         {
-            AppState.Save();
+            AppState.MutateAndSave(_ => mutator());
         }
     }
 
@@ -283,9 +288,17 @@ public sealed partial class RulesPage : Page
         }
 
         var entry = new RuleEntry(new MatchRule()) { Profile = _profiles[0] };
-        entry.Profile.Rules.Add(entry.Rule);
-        _rows.Insert(0, BuildRow(entry));
-        PersistOrder();
+        Border row = BuildRow(entry);
+        _rows.Insert(0, row);
+        Save(() =>
+        {
+            entry.Profile.Rules.Add(entry.Rule);
+            int priority = _rows.Count;
+            foreach (Border existingRow in _rows)
+            {
+                ((RuleEntry)existingRow.Tag).Rule.Priority = priority--;
+            }
+        });
     }
 
     private async void Test_Click(object sender, RoutedEventArgs e)

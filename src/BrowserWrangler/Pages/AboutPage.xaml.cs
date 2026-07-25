@@ -209,8 +209,15 @@ public sealed partial class AboutPage : Page
 
         try
         {
-            Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+            Process? installerProcess = Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+            if (installerProcess is null)
+            {
+                ShowStatus("Could not start installer.");
+                return;
+            }
+
             ShowStatus($"Started installer for version {versionText}.");
+            App.Current?.Exit();
         }
         catch (Win32Exception ex)
         {

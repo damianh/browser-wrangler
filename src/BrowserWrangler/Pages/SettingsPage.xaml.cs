@@ -47,12 +47,14 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
-        PickerSettings p = AppState.Config.Picker;
         int mode = PickerModeGroup.SelectedIndex;
-        p.Always = mode == 3;
-        p.OnConflict = mode is 1 or 2;
-        p.OnNoRule = mode == 2;
-        AppState.Save();
+        AppState.MutateAndSave(config =>
+        {
+            PickerSettings p = config.Picker;
+            p.Always = mode == 3;
+            p.OnConflict = mode is 1 or 2;
+            p.OnNoRule = mode == 2;
+        });
     }
 
     private void Setting_Changed(object sender, RoutedEventArgs e)
@@ -62,21 +64,27 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
-        bool oldAutoCheckEnabled = AppState.Config.Updates.AutoCheckEnabled;
-        PickerSettings p = AppState.Config.Picker;
-        p.OnCtrlShift = PickerCtrlShift.IsChecked == true;
-        p.OnCtrlAlt = PickerCtrlAlt.IsChecked == true;
-        p.OnAltShift = PickerAltShift.IsChecked == true;
-        p.OnCapsLock = PickerCapsLock.IsChecked == true;
-        p.CloseOnFocusLoss = PickerCloseOnFocusLoss.IsOn;
-        AppState.Config.Toast.ShowOnOpen = ToastEnabled.IsOn;
-        AppState.Config.Pipeline.UnwrapSafelinks = SafelinksEnabled.IsOn;
-        AppState.Config.Pipeline.ExpandShortenedUrls = ExpandShortLinksEnabled.IsOn;
-        AppState.Config.LogRuleHits = LogRuleHitsEnabled.IsOn;
-        AppState.Config.Updates.AutoCheckEnabled = AutoCheckUpdatesEnabled.IsOn;
-        AppState.Config.Updates.AutoDownloadInstaller = AutoDownloadInstallerEnabled.IsOn;
-        AppState.Save();
-        if (oldAutoCheckEnabled != AppState.Config.Updates.AutoCheckEnabled)
+        bool oldAutoCheckEnabled = false;
+        bool newAutoCheckEnabled = false;
+        AppState.MutateAndSave(config =>
+        {
+            oldAutoCheckEnabled = config.Updates.AutoCheckEnabled;
+            PickerSettings p = config.Picker;
+            p.OnCtrlShift = PickerCtrlShift.IsChecked == true;
+            p.OnCtrlAlt = PickerCtrlAlt.IsChecked == true;
+            p.OnAltShift = PickerAltShift.IsChecked == true;
+            p.OnCapsLock = PickerCapsLock.IsChecked == true;
+            p.CloseOnFocusLoss = PickerCloseOnFocusLoss.IsOn;
+            config.Toast.ShowOnOpen = ToastEnabled.IsOn;
+            config.Pipeline.UnwrapSafelinks = SafelinksEnabled.IsOn;
+            config.Pipeline.ExpandShortenedUrls = ExpandShortLinksEnabled.IsOn;
+            config.LogRuleHits = LogRuleHitsEnabled.IsOn;
+            config.Updates.AutoCheckEnabled = AutoCheckUpdatesEnabled.IsOn;
+            config.Updates.AutoDownloadInstaller = AutoDownloadInstallerEnabled.IsOn;
+            newAutoCheckEnabled = config.Updates.AutoCheckEnabled;
+        });
+
+        if (oldAutoCheckEnabled != newAutoCheckEnabled)
         {
             AppState.Updates.NotifyScheduleChanged();
         }
@@ -89,11 +97,17 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
-        int oldInterval = AppState.Config.Updates.CheckIntervalHours;
-        AppState.Config.Toast.VisibleSeconds = (int)ToastDuration.Value;
-        AppState.Config.Updates.CheckIntervalHours = Math.Clamp((int)UpdateIntervalHours.Value, 1, 168);
-        AppState.Save();
-        if (oldInterval != AppState.Config.Updates.CheckIntervalHours)
+        int oldInterval = 0;
+        int newInterval = 0;
+        AppState.MutateAndSave(config =>
+        {
+            oldInterval = config.Updates.CheckIntervalHours;
+            config.Toast.VisibleSeconds = (int)ToastDuration.Value;
+            config.Updates.CheckIntervalHours = Math.Clamp((int)UpdateIntervalHours.Value, 1, 168);
+            newInterval = config.Updates.CheckIntervalHours;
+        });
+
+        if (oldInterval != newInterval)
         {
             AppState.Updates.NotifyScheduleChanged();
         }

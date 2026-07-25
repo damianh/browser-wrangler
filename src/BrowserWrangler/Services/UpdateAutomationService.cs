@@ -95,18 +95,40 @@ public sealed class UpdateAutomationService : IDisposable
 
             string pendingInstallerPath = string.Empty;
             string pendingInstallerVersion = string.Empty;
-            AppState.MutateAndSave(config =>
+            string? persistenceFailure = null;
+            try
             {
-                config.Updates.LastCheckUtc = DateTimeOffset.UtcNow.ToString("O");
-                pendingInstallerPath = config.Updates.PendingInstallerPath;
-                pendingInstallerVersion = config.Updates.PendingInstallerVersion;
-            });
+                AppState.MutateAndSave(config =>
+                {
+                    config.Updates.LastCheckUtc = DateTimeOffset.UtcNow.ToString("O");
+                    pendingInstallerPath = config.Updates.PendingInstallerPath;
+                    pendingInstallerVersion = config.Updates.PendingInstallerVersion;
+                });
+            }
+            catch (IOException ex)
+            {
+                persistenceFailure = ex.Message;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                persistenceFailure = ex.Message;
+            }
+
+            if (persistenceFailure is not null)
+            {
+                (pendingInstallerPath, pendingInstallerVersion) = AppState.ReadConfig(config =>
+                    (config.Updates.PendingInstallerPath, config.Updates.PendingInstallerVersion));
+            }
+
+            string statusMessage = persistenceFailure is null
+                ? result.Message
+                : $"{result.Message} (Could not save update state: {persistenceFailure})";
 
             var snapshot = Snapshot with
             {
                 IsChecking = false,
                 LastCheckResult = result,
-                StatusMessage = result.Message,
+                StatusMessage = statusMessage,
                 PendingInstallerPath = pendingInstallerPath,
                 PendingInstallerVersion = pendingInstallerVersion,
             };
@@ -171,6 +193,14 @@ public sealed class UpdateAutomationService : IDisposable
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 break;
+            }
+            catch (IOException ex)
+            {
+                SetSnapshot(Snapshot with { StatusMessage = $"Update automation persistence failed: {ex.Message}" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                SetSnapshot(Snapshot with { StatusMessage = $"Update automation persistence failed: {ex.Message}" });
             }
         }
     }
