@@ -54,7 +54,7 @@ public sealed partial class WelcomeWindow : Window
         Closed += (_, _) =>
         {
             _pollTimer.Stop();
-            MarkSetupCompleted();
+            MarkSetupCompletedIfDefault();
         };
     }
 
@@ -64,13 +64,16 @@ public sealed partial class WelcomeWindow : Window
         IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         uint dpi = GetDpiForWindow(hwnd);
         double scale = dpi == 0 ? 1.0 : dpi / 96.0;
-        int width = (int)Math.Round(WindowWidth * scale);
-        int height = (int)Math.Round(WindowHeight * scale);
-
         DisplayArea area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary);
+        // Clamp to the work area so high DPI on a small display cannot place the dialog off-screen.
+        int width = Math.Min((int)Math.Round(WindowWidth * scale), area.WorkArea.Width);
+        int height = Math.Min((int)Math.Round(WindowHeight * scale), area.WorkArea.Height);
+        int x = Math.Max(area.WorkArea.X, area.WorkArea.X + ((area.WorkArea.Width - width) / 2));
+        int y = Math.Max(area.WorkArea.Y, area.WorkArea.Y + ((area.WorkArea.Height - height) / 2));
+
         AppWindow.MoveAndResize(new RectInt32(
-            area.WorkArea.X + ((area.WorkArea.Width - width) / 2),
-            area.WorkArea.Y + ((area.WorkArea.Height - height) / 2),
+            x,
+            y,
             width,
             height));
     }
@@ -113,6 +116,19 @@ public sealed partial class WelcomeWindow : Window
             ok ? Microsoft.UI.Colors.Green : Microsoft.UI.Colors.OrangeRed);
     }
 
+    /// <summary>
+    /// Records completion only once Windows actually routes links to us, so dismissing the window
+    /// early brings it back on the next launch rather than silently giving up.
+    /// </summary>
+    private static void MarkSetupCompletedIfDefault()
+    {
+        if (BrowserRegistration.IsDefaultBrowser(out _, out _))
+        {
+            MarkSetupCompleted();
+        }
+    }
+
+    /// <summary>Records that the user has dealt with setup, default browser or not.</summary>
     private static void MarkSetupCompleted()
     {
         if (AppState.Config.SetupCompleted)
@@ -135,6 +151,7 @@ public sealed partial class WelcomeWindow : Window
 
     private void OpenApp_Click(object sender, RoutedEventArgs e)
     {
+        // going into the app is the deliberate "not now" exit, so it stops the window reappearing
         MarkSetupCompleted();
         App.CurrentApp?.ShowMainWindow();
         Close();
