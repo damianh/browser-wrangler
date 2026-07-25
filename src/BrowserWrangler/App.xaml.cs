@@ -1,5 +1,6 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using BrowserWrangler.Services;
 
 namespace BrowserWrangler;
 
@@ -23,6 +24,11 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         DispatcherQueue = DispatcherQueue.GetForCurrentThread();
+
+        if (LaunchContext.Mode is LaunchMode.Config or LaunchMode.Welcome)
+        {
+            AppState.RefreshBrowsers();
+        }
 
         switch (LaunchContext.Mode)
         {

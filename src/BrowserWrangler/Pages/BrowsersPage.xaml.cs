@@ -13,11 +13,6 @@ public sealed partial class BrowsersPage : Page
     public BrowsersPage()
     {
         InitializeComponent();
-        if (AppState.Config.Browsers.Count == 0)
-        {
-            AppState.RefreshBrowsers();
-        }
-
         Rebuild();
     }
 
