@@ -4,16 +4,47 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border
         Background="{ThemeResource LayerFillColorDefaultBrush}"
+        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+        BorderThickness="1"
         CornerRadius="8">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Grid Padding="12,10,8,10" ColumnSpacing="8" RowSpacing="2" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+            <Grid
+                x:Name="TitleBarHost"
+                Padding="12,4,6,4"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1"
+                ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0" x:Name="TitleBarDragRegion">
+                    <TextBlock
+                        x:Name="TitleBarText"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Text="Browser Wrangler" />
+                </Grid>
+                <Button
+                    x:Name="CloseButton"
+                    Grid.Column="1"
+                    Padding="6"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    Click="Close_Click"
+                    ToolTipService.ToolTip="Close">
+                    <FontIcon FontSize="12" Glyph="&#xE711;" />
+                </Button>
+            </Grid>
+
+            <Grid Grid.Row="1" Padding="12,8,8,8" ColumnSpacing="8" RowSpacing="2" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
@@ -21,12 +52,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock
-                    FontSize="14"
-                    FontWeight="SemiBold"
-                    Text="Open with" />
-                <TextBlock
                     x:Name="UrlText"
-                    Grid.Row="1"
                     VerticalAlignment="Center"
                     FontSize="12"
                     Opacity="0.7"
@@ -36,7 +62,6 @@
                 <Button
                     x:Name="CopyButton"
                     Grid.Column="1"
-                    Grid.RowSpan="2"
                     VerticalAlignment="Top"
                     Padding="6"
                     Background="Transparent"
@@ -47,9 +72,23 @@
                 </Button>
             </Grid>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="ProfileList" Padding="6" Spacing="2" />
-            </ScrollViewer>
+            <ListView
+                x:Name="ProfileList"
+                Grid.Row="2"
+                Padding="6"
+                IsItemClickEnabled="True"
+                ItemClick="ProfileList_ItemClick"
+                SelectionMode="Single"
+                SingleSelectionFollowsFocus="True"
+                ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="MinHeight" Value="0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+            </ListView>
         </Grid>
     </Border>
 </Window>

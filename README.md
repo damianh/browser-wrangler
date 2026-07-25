@@ -53,7 +53,7 @@ Drag to reorder — topmost matching rule wins. Test any URL against your rules.
 ### Picker
 
 Pops up when a URL matches multiple rules, no rules, or when you hold a hotkey.
-Pick with the mouse or number keys.
+Pick with the mouse, the number keys (`1`–`9`, `0` for the tenth entry), or the arrow keys plus `Enter`. `Esc` cancels.
 
 ![Picker](docs/img/picker.png)
 
