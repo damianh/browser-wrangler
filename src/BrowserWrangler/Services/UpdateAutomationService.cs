@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using BrowserWrangler.Core.Configuration;
 using BrowserWrangler.Core.Updates;
@@ -23,8 +24,10 @@ public sealed class UpdateAutomationService : IDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly object _snapshotLock = new();
+    private readonly object _loopSignalLock = new();
     private CancellationTokenSource? _loopCts;
     private Task? _loopTask;
+    private TaskCompletionSource _loopSignal = NewLoopSignal();
     private UpdateAutomationSnapshot _snapshot = new();
 
     public event EventHandler? SnapshotChanged;
@@ -56,7 +59,10 @@ public sealed class UpdateAutomationService : IDisposable
 
         _loopCts = new CancellationTokenSource();
         _loopTask = RunLoopAsync(_loopCts.Token);
-        _ = CheckNowAsync();
+        if (config.Updates.AutoCheckEnabled)
+        {
+            _ = CheckNowAsync(_loopCts.Token);
+        }
     }
 
     public void Stop()
@@ -87,22 +93,27 @@ public sealed class UpdateAutomationService : IDisposable
                 .CheckAsync(DiagnosticsInfo.AppVersion, arch, cancellationToken)
                 .ConfigureAwait(false);
 
-            AppConfig config = AppState.Config;
-            config.Updates.LastCheckUtc = DateTimeOffset.UtcNow.ToString("O");
-            AppState.Save();
+            string pendingInstallerPath = string.Empty;
+            string pendingInstallerVersion = string.Empty;
+            AppState.MutateAndSave(config =>
+            {
+                config.Updates.LastCheckUtc = DateTimeOffset.UtcNow.ToString("O");
+                pendingInstallerPath = config.Updates.PendingInstallerPath;
+                pendingInstallerVersion = config.Updates.PendingInstallerVersion;
+            });
 
             var snapshot = Snapshot with
             {
                 IsChecking = false,
                 LastCheckResult = result,
                 StatusMessage = result.Message,
-                PendingInstallerPath = config.Updates.PendingInstallerPath,
-                PendingInstallerVersion = config.Updates.PendingInstallerVersion,
+                PendingInstallerPath = pendingInstallerPath,
+                PendingInstallerVersion = pendingInstallerVersion,
             };
             SetSnapshot(snapshot);
 
             if (result.Status == UpdateCheckStatus.UpdateAvailable
-                && config.Updates.AutoDownloadInstaller
+                && AppState.ReadConfig(config => config.Updates.AutoDownloadInstaller)
                 && result.InstallerDownloadUrl is { Length: > 0 })
             {
                 await DownloadInstallerIfNeededAsync(result, cancellationToken).ConfigureAwait(false);
@@ -117,6 +128,18 @@ public sealed class UpdateAutomationService : IDisposable
         }
     }
 
+    public void NotifyScheduleChanged()
+    {
+        TaskCompletionSource signal;
+        lock (_loopSignalLock)
+        {
+            signal = _loopSignal;
+            _loopSignal = NewLoopSignal();
+        }
+
+        _ = signal.TrySetResult();
+    }
+
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
@@ -124,16 +147,21 @@ public sealed class UpdateAutomationService : IDisposable
             AppConfig config = AppState.Config;
             if (!config.Updates.AutoCheckEnabled)
             {
-                await Task.Delay(TimeSpan.FromMinutes(2), cancellationToken).ConfigureAwait(false);
+                await WaitForDelayOrSettingsChangeAsync(TimeSpan.FromMinutes(2), cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
             int hours = Math.Clamp(config.Updates.CheckIntervalHours, 1, 168);
-            await Task.Delay(TimeSpan.FromHours(hours), cancellationToken).ConfigureAwait(false);
+            await WaitForDelayOrSettingsChangeAsync(TimeSpan.FromHours(hours), cancellationToken).ConfigureAwait(false);
 
             if (cancellationToken.IsCancellationRequested)
             {
                 break;
+            }
+
+            if (!AppState.Config.Updates.AutoCheckEnabled)
+            {
+                continue;
             }
 
             try
@@ -147,6 +175,23 @@ public sealed class UpdateAutomationService : IDisposable
         }
     }
 
+    private async Task WaitForDelayOrSettingsChangeAsync(TimeSpan delay, CancellationToken cancellationToken)
+    {
+        Task settingsChanged;
+        lock (_loopSignalLock)
+        {
+            settingsChanged = _loopSignal.Task;
+        }
+
+        Task delayTask = Task.Delay(delay, cancellationToken);
+        _ = await Task.WhenAny(delayTask, settingsChanged).ConfigureAwait(false);
+
+        if (delayTask.IsCompleted)
+        {
+            await delayTask.ConfigureAwait(false);
+        }
+    }
+
     private async Task DownloadInstallerIfNeededAsync(UpdateCheckResult result, CancellationToken cancellationToken)
     {
         Version? latest = result.LatestVersion;
@@ -155,10 +200,10 @@ public sealed class UpdateAutomationService : IDisposable
             return;
         }
 
-        AppConfig config = AppState.Config;
         string expectedVersion = latest.ToString();
-        if (string.Equals(config.Updates.PendingInstallerVersion, expectedVersion, StringComparison.Ordinal)
-            && File.Exists(config.Updates.PendingInstallerPath))
+        if (AppState.ReadConfig(config =>
+                string.Equals(config.Updates.PendingInstallerVersion, expectedVersion, StringComparison.Ordinal)
+                && File.Exists(config.Updates.PendingInstallerPath)))
         {
             return;
         }
@@ -177,52 +222,118 @@ public sealed class UpdateAutomationService : IDisposable
             return;
         }
 
-        using HttpClient client = UpdateChecker.CreateHttpClient(DiagnosticsInfo.AppVersion, TimeSpan.FromMinutes(3));
-        using HttpResponseMessage response = await client
-            .GetAsync(requestedUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-            .ConfigureAwait(false);
-        if (response.StatusCode is not HttpStatusCode.OK)
+        string? temporary = null;
+        try
         {
-            SetSnapshot(Snapshot with { IsDownloading = false, StatusMessage = $"Download failed: {(int)response.StatusCode} {response.ReasonPhrase}." });
-            return;
+            using HttpClient client = UpdateChecker.CreateHttpClient(DiagnosticsInfo.AppVersion, TimeSpan.FromMinutes(3));
+            using HttpResponseMessage response = await client
+                .GetAsync(requestedUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                .ConfigureAwait(false);
+            if (response.StatusCode is not HttpStatusCode.OK)
+            {
+                SetSnapshot(Snapshot with { StatusMessage = $"Download failed: {(int)response.StatusCode} {response.ReasonPhrase}." });
+                return;
+            }
+
+            Uri? finalUri = response.RequestMessage?.RequestUri;
+            if (finalUri is null || !UpdateChecker.IsTrustedReleaseAssetUri(finalUri))
+            {
+                SetSnapshot(Snapshot with { StatusMessage = "Download redirect target is not trusted." });
+                return;
+            }
+
+            string fileName = GetInstallerFileName(requestedUri, response.Content.Headers.ContentDisposition);
+            if (!fileName.EndsWith("-setup.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                SetSnapshot(Snapshot with { StatusMessage = "Downloaded file is not a setup executable." });
+                return;
+            }
+
+            string destination = Path.Combine(updatesDir, fileName);
+            temporary = destination + ".tmp";
+
+            await using (FileStream target = File.Create(temporary))
+            await using (Stream source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+            {
+                await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+            }
+
+            File.Move(temporary, destination, overwrite: true);
+            temporary = null;
+
+            AppState.MutateAndSave(config =>
+            {
+                config.Updates.PendingInstallerPath = destination;
+                config.Updates.PendingInstallerVersion = expectedVersion;
+            });
+
+            SetSnapshot(Snapshot with
+            {
+                StatusMessage = $"Downloaded version {latest}. Ready to install.",
+                PendingInstallerPath = destination,
+                PendingInstallerVersion = expectedVersion,
+            });
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            SetSnapshot(Snapshot with { StatusMessage = "Installer download timed out." });
+        }
+        catch (HttpRequestException ex)
+        {
+            SetSnapshot(Snapshot with { StatusMessage = $"Installer download failed: {ex.Message}" });
+        }
+        catch (IOException ex)
+        {
+            SetSnapshot(Snapshot with { StatusMessage = $"Installer download failed: {ex.Message}" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            SetSnapshot(Snapshot with { StatusMessage = $"Installer download failed: {ex.Message}" });
+        }
+        finally
+        {
+            if (temporary is { Length: > 0 } && File.Exists(temporary))
+            {
+                try
+                {
+                    File.Delete(temporary);
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+            }
+
+            (string pendingInstallerPath, string pendingInstallerVersion) = AppState.ReadConfig(config =>
+                (config.Updates.PendingInstallerPath, config.Updates.PendingInstallerVersion));
+            SetSnapshot(Snapshot with
+            {
+                IsDownloading = false,
+                PendingInstallerPath = pendingInstallerPath,
+                PendingInstallerVersion = pendingInstallerVersion,
+            });
+        }
+    }
+
+    private static string GetInstallerFileName(Uri requestedUri, ContentDispositionHeaderValue? contentDisposition)
+    {
+        string? contentDispositionName = contentDisposition?.FileNameStar ?? contentDisposition?.FileName;
+        if (!string.IsNullOrWhiteSpace(contentDispositionName))
+        {
+            string candidate = Path.GetFileName(contentDispositionName.Trim().Trim('"'));
+            if (candidate.Length > 0)
+            {
+                return candidate;
+            }
         }
 
-        Uri? finalUri = response.RequestMessage?.RequestUri;
-        if (finalUri is null || !UpdateChecker.IsTrustedReleaseAssetUri(finalUri))
-        {
-            SetSnapshot(Snapshot with { IsDownloading = false, StatusMessage = "Download redirect target is not trusted." });
-            return;
-        }
-
-        string fileName = Path.GetFileName(finalUri.LocalPath);
-        if (!fileName.EndsWith("-setup.exe", StringComparison.OrdinalIgnoreCase))
-        {
-            SetSnapshot(Snapshot with { IsDownloading = false, StatusMessage = "Downloaded file is not a setup executable." });
-            return;
-        }
-
-        string destination = Path.Combine(updatesDir, fileName);
-        string temporary = destination + ".tmp";
-
-        await using (FileStream target = File.Create(temporary))
-        await using (Stream source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
-        {
-            await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(temporary, destination, overwrite: true);
-
-        config.Updates.PendingInstallerPath = destination;
-        config.Updates.PendingInstallerVersion = expectedVersion;
-        AppState.Save();
-
-        SetSnapshot(Snapshot with
-        {
-            IsDownloading = false,
-            StatusMessage = $"Downloaded version {latest}. Ready to install.",
-            PendingInstallerPath = destination,
-            PendingInstallerVersion = expectedVersion,
-        });
+        return Path.GetFileName(requestedUri.LocalPath);
     }
 
     private void SetSnapshot(UpdateAutomationSnapshot snapshot)
@@ -240,4 +351,7 @@ public sealed class UpdateAutomationService : IDisposable
         Stop();
         _gate.Dispose();
     }
+
+    private static TaskCompletionSource NewLoopSignal() =>
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
 }

@@ -16,6 +16,13 @@ public sealed class UpdateChecker
     public const string DefaultLatestReleaseApiUrl = "https://api.github.com/repos/damianh/browser-wrangler/releases/latest";
 
     private const string UnreadableResponse = "GitHub returned a response that could not be understood.";
+    private static readonly string[] KnownInstallerArchitectureTokens =
+    [
+        "-x64-",
+        "-arm64-",
+        "-x86-",
+        "-arm-",
+    ];
     private static readonly HashSet<string> TrustedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
     {
         "github.com",
@@ -207,10 +214,28 @@ public sealed class UpdateChecker
                 return url;
             }
 
+            if (IsArchitectureSpecificInstaller(name))
+            {
+                continue;
+            }
+
             fallback ??= url;
         }
 
         return fallback;
+    }
+
+    private static bool IsArchitectureSpecificInstaller(string installerName)
+    {
+        foreach (string token in KnownInstallerArchitectureTokens)
+        {
+            if (installerName.Contains(token, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string NormalizeArch(string? preferredArchitecture)

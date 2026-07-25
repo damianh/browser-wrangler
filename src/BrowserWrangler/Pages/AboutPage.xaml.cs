@@ -170,6 +170,10 @@ public sealed partial class AboutPage : Page
         {
             ShowStatus("The update check was canceled.");
         }
+        catch (Exception ex)
+        {
+            ShowStatus($"Could not check for updates: {ex.Message}");
+        }
         finally
         {
             UpdateProgress.IsActive = false;

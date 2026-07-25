@@ -29,7 +29,7 @@ public sealed class ConfigStore
 
     public string ConfigFilePath { get; }
 
-    public AppConfig Load()
+    public AppConfig Load(Version? runningVersion = null)
     {
         AppConfig config;
         if (!File.Exists(ConfigFilePath))
@@ -50,7 +50,12 @@ public sealed class ConfigStore
             }
         }
 
-        FixUp(config);
+        bool changed = FixUp(config, runningVersion);
+        if (changed)
+        {
+            Save(config);
+        }
+
         return config;
     }
 
@@ -73,13 +78,47 @@ public sealed class ConfigStore
     }
 
     /// <summary>Restores non-serialized back references after deserialization.</summary>
-    private static void FixUp(AppConfig config)
+    private static bool FixUp(AppConfig config, Version? runningVersion)
     {
-        config.Updates.CheckIntervalHours = Math.Clamp(config.Updates.CheckIntervalHours, 1, 168);
+        bool changed = false;
+        int clampedIntervalHours = Math.Clamp(config.Updates.CheckIntervalHours, 1, 168);
+        if (config.Updates.CheckIntervalHours != clampedIntervalHours)
+        {
+            config.Updates.CheckIntervalHours = clampedIntervalHours;
+            changed = true;
+        }
+
         if (config.Updates.PendingInstallerPath.Length > 0 && !File.Exists(config.Updates.PendingInstallerPath))
         {
             config.Updates.PendingInstallerPath = string.Empty;
             config.Updates.PendingInstallerVersion = string.Empty;
+            changed = true;
+        }
+
+        if (runningVersion is not null
+            && config.Updates.PendingInstallerPath.Length > 0
+            && config.Updates.PendingInstallerVersion.Length > 0
+            && File.Exists(config.Updates.PendingInstallerPath))
+        {
+            bool clearPending = !Version.TryParse(config.Updates.PendingInstallerVersion, out Version? pendingVersion)
+                || NormalizeVersion(pendingVersion) <= NormalizeVersion(runningVersion);
+            if (clearPending)
+            {
+                try
+                {
+                    File.Delete(config.Updates.PendingInstallerPath);
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+
+                config.Updates.PendingInstallerPath = string.Empty;
+                config.Updates.PendingInstallerVersion = string.Empty;
+                changed = true;
+            }
         }
 
         foreach (Browser browser in config.Browsers)
@@ -89,5 +128,10 @@ public sealed class ConfigStore
                 profile.Browser = browser;
             }
         }
+
+        return changed;
     }
+
+    private static Version NormalizeVersion(Version version) =>
+        new(version.Major, version.Minor, Math.Max(version.Build, 0), Math.Max(version.Revision, 0));
 }

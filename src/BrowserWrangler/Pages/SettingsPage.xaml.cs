@@ -62,6 +62,7 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
+        bool oldAutoCheckEnabled = AppState.Config.Updates.AutoCheckEnabled;
         PickerSettings p = AppState.Config.Picker;
         p.OnCtrlShift = PickerCtrlShift.IsChecked == true;
         p.OnCtrlAlt = PickerCtrlAlt.IsChecked == true;
@@ -75,6 +76,10 @@ public sealed partial class SettingsPage : Page
         AppState.Config.Updates.AutoCheckEnabled = AutoCheckUpdatesEnabled.IsOn;
         AppState.Config.Updates.AutoDownloadInstaller = AutoDownloadInstallerEnabled.IsOn;
         AppState.Save();
+        if (oldAutoCheckEnabled != AppState.Config.Updates.AutoCheckEnabled)
+        {
+            AppState.Updates.NotifyScheduleChanged();
+        }
     }
 
     private void Slider_Changed(object sender, RangeBaseValueChangedEventArgs e)
@@ -84,8 +89,13 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
+        int oldInterval = AppState.Config.Updates.CheckIntervalHours;
         AppState.Config.Toast.VisibleSeconds = (int)ToastDuration.Value;
         AppState.Config.Updates.CheckIntervalHours = Math.Clamp((int)UpdateIntervalHours.Value, 1, 168);
         AppState.Save();
+        if (oldInterval != AppState.Config.Updates.CheckIntervalHours)
+        {
+            AppState.Updates.NotifyScheduleChanged();
+        }
     }
 }

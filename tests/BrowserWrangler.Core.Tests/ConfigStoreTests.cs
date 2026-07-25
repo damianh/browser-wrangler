@@ -128,4 +128,54 @@ public class ConfigStoreTests : IDisposable
 
         Assert.True(store.Load().SetupCompleted);
     }
+
+    [Fact]
+    public void Load_clears_and_deletes_pending_installer_when_not_newer_than_running_app()
+    {
+        ConfigStore store = MakeStore();
+        Directory.CreateDirectory(_dir);
+        string pendingInstallerPath = Path.Combine(_dir, "BrowserWrangler-2026.801.4-x64-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{pendingInstallerPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": "2026.801.4"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+        Assert.False(File.Exists(pendingInstallerPath));
+    }
+
+    [Fact]
+    public void Load_keeps_pending_installer_when_it_is_newer_than_running_app()
+    {
+        ConfigStore store = MakeStore();
+        Directory.CreateDirectory(_dir);
+        string pendingInstallerPath = Path.Combine(_dir, "BrowserWrangler-2026.801.4-x64-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{pendingInstallerPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": "2026.801.5"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(pendingInstallerPath, config.Updates.PendingInstallerPath);
+        Assert.Equal("2026.801.5", config.Updates.PendingInstallerVersion);
+        Assert.True(File.Exists(pendingInstallerPath));
+    }
 }

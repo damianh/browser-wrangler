@@ -70,6 +70,60 @@ public class UpdateCheckerTests
     }
 
     [Fact]
+    public async Task Does_not_fallback_to_mismatched_architecture_installer()
+    {
+        UpdateChecker checker = MakeChecker(new StubHandler(Json(
+            """
+            {
+              "tag_name": "v2026.801.4",
+              "html_url": "https://github.com/damianh/browser-wrangler/releases/tag/v2026.801.4",
+              "prerelease": false,
+              "assets": [
+                {
+                  "name": "BrowserWrangler-2026.801.4-arm64-setup.exe",
+                  "browser_download_url": "https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4/BrowserWrangler-2026.801.4-arm64-setup.exe"
+                }
+              ]
+            }
+            """)));
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10), "x64");
+
+        Assert.Equal(UpdateCheckStatus.UpdateAvailable, result.Status);
+        Assert.Null(result.InstallerDownloadUrl);
+    }
+
+    [Fact]
+    public async Task Falls_back_to_architecture_neutral_installer_when_preferred_is_unavailable()
+    {
+        UpdateChecker checker = MakeChecker(new StubHandler(Json(
+            """
+            {
+              "tag_name": "v2026.801.4",
+              "html_url": "https://github.com/damianh/browser-wrangler/releases/tag/v2026.801.4",
+              "prerelease": false,
+              "assets": [
+                {
+                  "name": "BrowserWrangler-2026.801.4-setup.exe",
+                  "browser_download_url": "https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4/BrowserWrangler-2026.801.4-setup.exe"
+                },
+                {
+                  "name": "BrowserWrangler-2026.801.4-arm64-setup.exe",
+                  "browser_download_url": "https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4/BrowserWrangler-2026.801.4-arm64-setup.exe"
+                }
+              ]
+            }
+            """)));
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10), "x64");
+
+        Assert.Equal(UpdateCheckStatus.UpdateAvailable, result.Status);
+        Assert.Equal(
+            "https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4/BrowserWrangler-2026.801.4-setup.exe",
+            result.InstallerDownloadUrl);
+    }
+
+    [Fact]
     public async Task Reports_up_to_date_when_release_matches_running_version()
     {
         UpdateChecker checker = MakeChecker(new StubHandler(Json(ReleaseJson("v2026.718.10"))));

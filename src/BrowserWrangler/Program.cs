@@ -41,7 +41,7 @@ public static class Program
     public static int Main(string[] args)
     {
         var store = new ConfigStore();
-        AppConfig config = store.Load();
+        AppConfig config = store.Load(DiagnosticsInfo.AppVersion);
         LaunchContext.Config = config;
 
         // installer hooks: silent register/unregister of the browser (per-user registry)
