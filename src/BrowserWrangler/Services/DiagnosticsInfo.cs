@@ -67,7 +67,59 @@ internal static class DiagnosticsInfo
         return entries;
     }
 
-    private static string DescribeFile(string path) => File.Exists(path) ? path : $"{path} (not created yet)";
+    private static string DescribeFile(string path)
+    {
+        // Redact profile-specific prefixes because this value is copied into prefilled bug report URLs.
+        string displayPath = RedactProfilePath(path);
+        return File.Exists(path) ? displayPath : $"{displayPath} (not created yet)";
+    }
+
+    private static string RedactProfilePath(string path)
+    {
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (TryReplaceKnownFolderPrefix(path, localAppData, "%LOCALAPPDATA%", out string redacted))
+        {
+            return redacted;
+        }
+
+        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (TryReplaceKnownFolderPrefix(path, userProfile, "%USERPROFILE%", out redacted))
+        {
+            return redacted;
+        }
+
+        return path;
+    }
+
+    private static bool TryReplaceKnownFolderPrefix(string path, string folder, string token, out string redacted)
+    {
+        redacted = path;
+        if (string.IsNullOrWhiteSpace(folder))
+        {
+            return false;
+        }
+
+        folder = Path.TrimEndingDirectorySeparator(folder);
+        if (!path.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (path.Length == folder.Length)
+        {
+            redacted = token;
+            return true;
+        }
+
+        // Guard against matching a sibling folder with a shared prefix, e.g. "...\Local" vs "...\LocalLow".
+        if (path[folder.Length] is not ('\\' or '/'))
+        {
+            return false;
+        }
+
+        redacted = token + path[folder.Length..];
+        return true;
+    }
 
     private static string WindowsAppSdkVersion()
     {

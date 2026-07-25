@@ -32,7 +32,7 @@
             <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="App info" />
             <TextBlock
                 FontSize="12" Opacity="0.7" TextWrapping="Wrap"
-                Text="Handy when reporting a problem. None of this identifies you or includes the links you have opened." />
+                Text="Handy when reporting a problem. Paths are shown with placeholders instead of your user folder, and the links you open are never included." />
             <Grid x:Name="AppInfoGrid" Margin="0,8,0,0" ColumnSpacing="16" RowSpacing="6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -62,7 +62,7 @@
                     Padding="0"
                     Content="Report an issue"
                     Click="ReportIssue_Click"
-                    ToolTipService.ToolTip="Opens a pre-filled bug report with the app info above. Nothing is sent until you submit it." />
+                    ToolTipService.ToolTip="Opens a pre-filled bug report with the app info above. You can edit it before submitting." />
                 <HyperlinkButton
                     Padding="0"
                     Content="Releases and changelog"

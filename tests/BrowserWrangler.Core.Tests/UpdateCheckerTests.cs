@@ -99,6 +99,35 @@ public class UpdateCheckerTests
         UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10));
 
         Assert.Equal(UpdateCheckStatus.Failed, result.Status);
+        Assert.Equal("GitHub returned a response that could not be understood.", result.Message);
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("\"just a string\"")]
+    [InlineData("123")]
+    [InlineData("null")]
+    [InlineData("{ \"tag_name\": 123 }")]
+    public async Task Fails_when_json_response_has_unexpected_shape(string body)
+    {
+        UpdateChecker checker = MakeChecker(new StubHandler(Json(body)));
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10));
+
+        Assert.Equal(UpdateCheckStatus.Failed, result.Status);
+        Assert.Equal("GitHub returned a response that could not be understood.", result.Message);
+    }
+
+    [Fact]
+    public async Task Reports_update_available_when_release_url_is_not_a_string()
+    {
+        UpdateChecker checker = MakeChecker(new StubHandler(Json("{ \"tag_name\": \"v2026.801.4\", \"html_url\": 42 }")));
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10));
+
+        Assert.Equal(UpdateCheckStatus.UpdateAvailable, result.Status);
+        Assert.Equal(new Version(2026, 801, 4, 0), result.LatestVersion);
+        Assert.Null(result.ReleaseUrl);
     }
 
     [Fact]

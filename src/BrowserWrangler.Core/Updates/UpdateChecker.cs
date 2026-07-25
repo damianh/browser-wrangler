@@ -15,6 +15,8 @@ public sealed class UpdateChecker
 
     public const string DefaultLatestReleaseApiUrl = "https://api.github.com/repos/damianh/browser-wrangler/releases/latest";
 
+    private const string UnreadableResponse = "GitHub returned a response that could not be understood.";
+
     private readonly HttpClient _httpClient;
     private readonly string _latestReleaseApiUrl;
 
@@ -68,12 +70,24 @@ public sealed class UpdateChecker
         {
             using JsonDocument document = JsonDocument.Parse(body);
             JsonElement root = document.RootElement;
-            tag = root.TryGetProperty("tag_name", out JsonElement tagElement) ? tagElement.GetString() : null;
-            releaseUrl = root.TryGetProperty("html_url", out JsonElement urlElement) ? urlElement.GetString() : null;
+
+            // A syntactically valid payload can still have an unexpected shape (an array, a bare
+            // value, or a numeric tag_name), so check the kind before reading anything out.
+            if (root.ValueKind != JsonValueKind.Object || !TryReadString(root, "tag_name", out tag))
+            {
+                return UpdateCheckResult.Failed(UnreadableResponse);
+            }
+
+            // The release page link is optional decoration; a wrong type here should not fail the check.
+            releaseUrl = TryReadString(root, "html_url", out string? url) ? url : null;
         }
         catch (JsonException)
         {
-            return UpdateCheckResult.Failed("GitHub returned a response that could not be understood.");
+            return UpdateCheckResult.Failed(UnreadableResponse);
+        }
+        catch (InvalidOperationException)
+        {
+            return UpdateCheckResult.Failed(UnreadableResponse);
         }
 
         if (!TryParseVersionTag(tag, out Version? latestVersion))
@@ -89,6 +103,19 @@ public sealed class UpdateChecker
         return latestVersion > Normalize(currentVersion)
             ? UpdateCheckResult.UpdateAvailable(latestVersion, releaseUrl)
             : UpdateCheckResult.UpToDate(latestVersion, releaseUrl);
+    }
+
+    /// <summary>Reads a string property, treating a missing or wrongly typed value as absent.</summary>
+    private static bool TryReadString(JsonElement owner, string propertyName, out string? value)
+    {
+        value = null;
+        if (!owner.TryGetProperty(propertyName, out JsonElement element) || element.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        value = element.GetString();
+        return true;
     }
 
     /// <summary>Parses release tags such as "v2026.718.10" or "2026.718.10".</summary>
