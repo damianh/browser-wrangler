@@ -68,9 +68,6 @@ jobs:
   release:
     needs: [version, build]
     runs-on: ubuntu-latest
-    # Requires manual approval (release environment) before publishing
-    # to GitHub releases and submitting to winget-pkgs.
-    environment: release
     steps:
       - uses: actions/download-artifact@v8
         with:
