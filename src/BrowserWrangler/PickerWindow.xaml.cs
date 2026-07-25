@@ -30,10 +30,32 @@ public sealed partial class PickerWindow : Window
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(nint hwnd, int attr, ref int value, int size);
 
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(nint hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hwnd, nint processId);
+
+    [DllImport("user32.dll")]
+    private static extern bool AttachThreadInput(uint attachTo, uint attachFrom, bool attach);
+
+    [DllImport("user32.dll")]
+    private static extern bool BringWindowToTop(nint hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(nint hwnd, int nCmdShow);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWCP_ROUND = 2;
     private const int DWMWA_BORDER_COLOR = 34;
     private const uint DWMWA_COLOR_NONE = 0xFFFFFFFE;
+    private const int SW_SHOWNORMAL = 1;
 
     private struct NativePoint
     {
@@ -49,6 +71,9 @@ public sealed partial class PickerWindow : Window
     private readonly AppConfig _config;
     private readonly RouteDecision _decision;
     private readonly List<BrowserProfile> _profiles;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _foregroundRetryTimer;
+    private int _foregroundRetriesLeft;
+    private bool _isPicking;
 
     public PickerWindow(AppConfig config, RouteDecision decision)
     {
@@ -72,16 +97,17 @@ public sealed partial class PickerWindow : Window
         int index = 1;
         foreach (BrowserProfile profile in _profiles)
         {
-            var row = new Grid { ColumnSpacing = 10, Padding = new Thickness(8, 0, 8, 0), Height = 38 };
+            var row = new Grid { ColumnSpacing = 10, Padding = new Thickness(8, 0, 8, 0), Height = 38, Tag = profile };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(26) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            if (_config.Picker.ShowKeyHints && index <= 9)
+            string? hintText = index <= 9 ? index.ToString() : index == 10 ? "0" : null;
+            if (_config.Picker.ShowKeyHints && hintText is not null)
             {
                 var hint = new TextBlock
                 {
-                    Text = index.ToString(),
+                    Text = hintText,
                     FontSize = 12,
                     VerticalAlignment = VerticalAlignment.Center,
                     Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"],
@@ -112,19 +138,22 @@ public sealed partial class PickerWindow : Window
             Grid.SetColumn(name, 2);
             row.Children.Add(name);
 
-            var button = new Button
+            var item = new ListViewItem
             {
                 Content = row,
                 Tag = profile,
                 Padding = new Thickness(0),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
             };
-            button.Click += (_, _) => Pick((BrowserProfile)button.Tag);
-            ProfileList.Children.Add(button);
+            item.Tapped += (_, _) => Pick(profile);
+            ProfileList.Items.Add(item);
             index++;
+        }
+
+        if (ProfileList.Items.Count > 0)
+        {
+            ProfileList.SelectedIndex = 0;
+            ProfileList.Loaded += (_, _) => FocusSelected();
         }
     }
 
@@ -136,6 +165,9 @@ public sealed partial class PickerWindow : Window
         presenter.SetBorderAndTitleBar(false, false);
         appWindow.SetPresenter(presenter);
         appWindow.IsShownInSwitchers = false;
+        Title = "Browser Wrangler";
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(TitleBarHost);
 
         // round the actual window corners so they match the XAML border,
         // and remove the native DWM border so only the XAML 1px stroke shows
@@ -157,10 +189,14 @@ public sealed partial class PickerWindow : Window
         int y = area.WorkArea.Y + ((area.WorkArea.Height - height) / 2);
         appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, height));
 
-        if (Content is UIElement root)
+        if (Content is FrameworkElement root)
         {
-            root.KeyDown += OnKeyDown;
+            // handledEventsToo so the ListView's own key handling doesn't swallow shortcuts
+            root.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnKeyDown), true);
+            root.Loaded += (_, _) => StartForegroundRetries();
         }
+
+        Activated += OnFirstActivated;
 
         if (_config.Picker.CloseOnFocusLoss)
         {
@@ -174,22 +210,182 @@ public sealed partial class PickerWindow : Window
         }
     }
 
+    private void OnFirstActivated(object sender, WindowActivatedEventArgs e)
+    {
+        if (e.WindowActivationState == WindowActivationState.Deactivated)
+        {
+            return;
+        }
+
+        Activated -= OnFirstActivated;
+        StartForegroundRetries();
+    }
+
+    private void FocusSelected()
+    {
+        if (ProfileList.Items.Count == 0)
+        {
+            return;
+        }
+
+        if (ProfileList.SelectedIndex < 0)
+        {
+            ProfileList.SelectedIndex = 0;
+        }
+
+        if (ProfileList.ContainerFromIndex(ProfileList.SelectedIndex) is ListViewItem container)
+        {
+            _ = container.Focus(FocusState.Programmatic);
+            return;
+        }
+
+        _ = ProfileList.Focus(FocusState.Programmatic);
+    }
+
+    private void MoveSelection(VirtualKey key)
+    {
+        int count = ProfileList.Items.Count;
+        if (count == 0)
+        {
+            return;
+        }
+
+        int current = ProfileList.SelectedIndex;
+        int next = key switch
+        {
+            VirtualKey.Home => 0,
+            VirtualKey.End => count - 1,
+            VirtualKey.Down => current < 0 ? 0 : (current + 1) % count,
+            _ => current <= 0 ? count - 1 : current - 1,
+        };
+
+        ProfileList.SelectedIndex = next;
+        ProfileList.ScrollIntoView(ProfileList.Items[next]);
+        if (ProfileList.ContainerFromIndex(next) is ListViewItem container)
+        {
+            _ = container.Focus(FocusState.Programmatic);
+        }
+    }
+
+    private void StartForegroundRetries()
+    {
+        if (TryFocusPicker())
+        {
+            return;
+        }
+
+        _foregroundRetriesLeft = 8;
+        if (_foregroundRetryTimer is null)
+        {
+            _foregroundRetryTimer = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().CreateTimer();
+            _foregroundRetryTimer.Interval = TimeSpan.FromMilliseconds(60);
+            _foregroundRetryTimer.Tick += (_, _) =>
+            {
+                if (TryFocusPicker() || --_foregroundRetriesLeft <= 0)
+                {
+                    _foregroundRetryTimer?.Stop();
+                }
+            };
+        }
+
+        _foregroundRetryTimer.Stop();
+        _foregroundRetryTimer.Start();
+    }
+
+    private bool TryFocusPicker()
+    {
+        ForceForeground();
+        FocusSelected();
+        return GetForegroundWindow() == WinRT.Interop.WindowNative.GetWindowHandle(this);
+    }
+
+    /// <summary>
+    /// The picker is launched from whatever app owns the link, so Windows' foreground lock can
+    /// leave it visible but without keyboard focus. Borrow the foreground thread's input state
+    /// long enough to take focus for real.
+    /// </summary>
+    private void ForceForeground()
+    {
+        nint hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        nint foreground = GetForegroundWindow();
+        if (foreground == hwnd)
+        {
+            return;
+        }
+
+        uint foregroundThread = GetWindowThreadProcessId(foreground, 0);
+        uint currentThread = GetCurrentThreadId();
+        bool attached = foregroundThread != 0 && foregroundThread != currentThread
+            && AttachThreadInput(currentThread, foregroundThread, true);
+
+        _ = ShowWindow(hwnd, SW_SHOWNORMAL);
+        _ = BringWindowToTop(hwnd);
+        _ = SetForegroundWindow(hwnd);
+
+        if (attached)
+        {
+            _ = AttachThreadInput(currentThread, foregroundThread, false);
+        }
+    }
+
+    private void ProfileList_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        BrowserProfile? profile = e.ClickedItem switch
+        {
+            ListViewItem { Tag: BrowserProfile p } => p,
+            FrameworkElement { Tag: BrowserProfile p } => p,
+            BrowserProfile p => p,
+            _ => null,
+        };
+
+        if (profile is not null)
+        {
+            Pick(profile);
+        }
+    }
+
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Escape)
         {
+            e.Handled = true;
             Close();
+            return;
+        }
+
+        if (e.Key is VirtualKey.Enter or VirtualKey.Space)
+        {
+            if (ProfileList.SelectedItem is ListViewItem { Tag: BrowserProfile selected })
+            {
+                e.Handled = true;
+                Pick(selected);
+            }
+
+            return;
+        }
+
+        if (e.Key is VirtualKey.Down or VirtualKey.Up or VirtualKey.Home or VirtualKey.End)
+        {
+            // only step manually when the list didn't move selection itself (e.g. focus is elsewhere)
+            if (!e.Handled)
+            {
+                e.Handled = true;
+                MoveSelection(e.Key);
+            }
+
             return;
         }
 
         int number = e.Key switch
         {
+            VirtualKey.Number0 or VirtualKey.NumberPad0 => 9,
             >= VirtualKey.Number1 and <= VirtualKey.Number9 => e.Key - VirtualKey.Number1,
             >= VirtualKey.NumberPad1 and <= VirtualKey.NumberPad9 => e.Key - VirtualKey.NumberPad1,
             _ => -1,
         };
         if (number >= 0 && number < _profiles.Count)
         {
+            e.Handled = true;
             Pick(_profiles[number]);
         }
     }
@@ -203,8 +399,19 @@ public sealed partial class PickerWindow : Window
         Close();
     }
 
+    private void Close_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
     private void Pick(BrowserProfile profile)
     {
+        if (_isPicking)
+        {
+            return;
+        }
+
+        _isPicking = true;
         RuleHitLogger.LogPickerSelection(_config, _decision, profile);
         BrowserLauncher.Launch(profile, _decision.Payload);
         Close();
