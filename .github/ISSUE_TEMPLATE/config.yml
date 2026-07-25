@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Feature request or idea
+    url: https://github.com/damianh/browser-wrangler/issues/new
+    about: Open a blank issue and describe what you would like Browser Wrangler to do.

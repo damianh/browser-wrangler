@@ -2,15 +2,90 @@
     x:Class="BrowserWrangler.Pages.AboutPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <StackPanel Padding="24" Spacing="12" MaxWidth="640" HorizontalAlignment="Left">
-        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Browser Wrangler" />
-        <TextBlock x:Name="VersionText" Opacity="0.7" />
-        <TextBlock TextWrapping="Wrap"
-                   Text="Redirects URLs you click to the right browser and profile, based on rules you define." />
-        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Attribution" />
-        <TextBlock TextWrapping="Wrap"
-                   Text="Browser Wrangler is a .NET / WinUI 3 fork of Browser Tamer by aloneguid, licensed under the Apache License 2.0. Portions of the design and behaviour are derived from that project." />
-        <HyperlinkButton Content="Report an issue" NavigateUri="https://github.com/damianh/browser-wrangler/issues" />
-        <HyperlinkButton Content="Apache License 2.0" NavigateUri="https://www.apache.org/licenses/LICENSE-2.0" />
-    </StackPanel>
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="8" MaxWidth="720" HorizontalAlignment="Left">
+
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <Image
+                    x:Name="AppIcon"
+                    Width="64" Height="64"
+                    VerticalAlignment="Top"
+                    Visibility="Collapsed" />
+                <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Browser Wrangler" />
+                    <TextBlock x:Name="VersionText" Opacity="0.7" />
+                    <TextBlock
+                        MaxWidth="520"
+                        TextWrapping="Wrap"
+                        Text="Redirects URLs you click to the right browser and profile, based on rules you define." />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Margin="0,8,0,0" Spacing="2">
+                <HyperlinkButton
+                    Padding="0"
+                    Content="Created by Damian Hickey"
+                    NavigateUri="https://github.com/damianh" />
+                <TextBlock x:Name="CopyrightText" FontSize="12" Opacity="0.7" />
+            </StackPanel>
+
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="App info" />
+            <TextBlock
+                FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                Text="Handy when reporting a problem. Paths are shown with placeholders instead of your user folder, and the links you open are never included." />
+            <Grid x:Name="AppInfoGrid" Margin="0,8,0,0" ColumnSpacing="16" RowSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0" Spacing="8">
+                <Button x:Name="CopyDiagnosticsButton" Content="Copy diagnostics" Click="CopyDiagnostics_Click" />
+                <Button x:Name="CheckUpdatesButton" Content="Check for updates" Click="CheckUpdates_Click" />
+                <ProgressRing x:Name="UpdateProgress" Width="20" Height="20" IsActive="False" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock
+                x:Name="UpdateStatusText"
+                FontSize="12" Opacity="0.8" TextWrapping="Wrap"
+                Visibility="Collapsed" />
+            <HyperlinkButton
+                x:Name="UpdateLink"
+                Padding="0"
+                Content="Open the release page"
+                Visibility="Collapsed" />
+
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="Support" />
+            <StackPanel Spacing="2">
+                <HyperlinkButton
+                    Padding="0"
+                    Content="Report an issue"
+                    Click="ReportIssue_Click"
+                    ToolTipService.ToolTip="Opens a pre-filled bug report with the app info above. You can edit it before submitting." />
+                <HyperlinkButton
+                    Padding="0"
+                    Content="Releases and changelog"
+                    NavigateUri="https://github.com/damianh/browser-wrangler/releases" />
+                <HyperlinkButton
+                    Padding="0"
+                    Content="Source code"
+                    NavigateUri="https://github.com/damianh/browser-wrangler" />
+            </StackPanel>
+
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="Attribution" />
+            <TextBlock TextWrapping="Wrap"
+                       Text="Browser Wrangler is a .NET / WinUI 3 fork of Browser Tamer by aloneguid, licensed under the Apache License 2.0. Portions of the design and behaviour are derived from that project." />
+            <StackPanel Spacing="2">
+                <HyperlinkButton
+                    Padding="0"
+                    Content="Browser Tamer"
+                    NavigateUri="https://github.com/aloneguid/bt" />
+                <HyperlinkButton
+                    Padding="0"
+                    Content="Apache License 2.0"
+                    NavigateUri="https://www.apache.org/licenses/LICENSE-2.0" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
 </Page>

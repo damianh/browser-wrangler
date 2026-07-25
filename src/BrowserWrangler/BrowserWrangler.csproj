@@ -17,6 +17,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Version is stamped by CI as YYYY.MMDD.buildrun -->
     <Version Condition="'$(Version)' == ''">1.0.0</Version>
+    <Product>Browser Wrangler</Product>
+    <Authors>Damian Hickey</Authors>
+    <Company>Damian Hickey</Company>
+    <Copyright>© 2026 Damian Hickey</Copyright>
+    <Description>Redirects URLs you click to the right browser and profile, based on rules you define.</Description>
+    <RepositoryUrl>https://github.com/damianh/browser-wrangler</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,7 +33,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Surfaced on the About page; the runtime assemblies only expose the WinUI version. -->
+    <AssemblyMetadata
+      Include="WindowsAppSdkVersion"
+      Value="@(PackageReference->WithMetadataValue('Identity','Microsoft.WindowsAppSDK')->'%(Version)')" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="Assets\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\logo-256.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
