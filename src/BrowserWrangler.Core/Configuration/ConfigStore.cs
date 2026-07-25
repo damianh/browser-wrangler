@@ -16,6 +16,10 @@ public sealed class ConfigStore
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
         Converters = { new JsonStringEnumConverter() },
     };
+    private static readonly string ManagedUpdatesDirectoryPath = Path.GetFullPath(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "BrowserWrangler",
+        "updates"));
 
     public ConfigStore()
         : this(Path.Combine(
@@ -104,15 +108,18 @@ public sealed class ConfigStore
                 || NormalizeVersion(pendingVersion) <= NormalizeVersion(runningVersion);
             if (clearPending)
             {
-                try
+                if (TryGetManagedPendingInstallerPath(config.Updates.PendingInstallerPath, out string managedPendingInstallerPath))
                 {
-                    File.Delete(config.Updates.PendingInstallerPath);
-                }
-                catch (IOException)
-                {
-                }
-                catch (UnauthorizedAccessException)
-                {
+                    try
+                    {
+                        File.Delete(managedPendingInstallerPath);
+                    }
+                    catch (IOException)
+                    {
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                    }
                 }
 
                 config.Updates.PendingInstallerPath = string.Empty;
@@ -134,4 +141,31 @@ public sealed class ConfigStore
 
     private static Version NormalizeVersion(Version version) =>
         new(version.Major, version.Minor, Math.Max(version.Build, 0), Math.Max(version.Revision, 0));
+
+    private static bool TryGetManagedPendingInstallerPath(string pendingInstallerPath, out string normalizedManagedPath)
+    {
+        normalizedManagedPath = string.Empty;
+        if (pendingInstallerPath.Length == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            string normalizedPath = Path.GetFullPath(pendingInstallerPath);
+            string managedRoot = ManagedUpdatesDirectoryPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            if (!normalizedPath.StartsWith(managedRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            normalizedManagedPath = normalizedPath;
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+    }
 }

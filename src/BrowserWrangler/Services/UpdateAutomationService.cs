@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
@@ -22,6 +24,8 @@ public sealed record UpdateAutomationSnapshot
 /// </summary>
 public sealed class UpdateAutomationService : IDisposable
 {
+    private const long MaxInstallerSizeBytes = 512L * 1024 * 1024;
+    private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(3);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly object _snapshotLock = new();
     private readonly object _loopSignalLock = new();
@@ -59,10 +63,6 @@ public sealed class UpdateAutomationService : IDisposable
 
         _loopCts = new CancellationTokenSource();
         _loopTask = RunLoopAsync(_loopCts.Token);
-        if (config.Updates.AutoCheckEnabled)
-        {
-            _ = CheckNowAsync(_loopCts.Token);
-        }
     }
 
     public void Stop()
@@ -173,8 +173,11 @@ public sealed class UpdateAutomationService : IDisposable
                 continue;
             }
 
-            int hours = Math.Clamp(config.Updates.CheckIntervalHours, 1, 168);
-            await WaitForDelayOrSettingsChangeAsync(TimeSpan.FromHours(hours), cancellationToken).ConfigureAwait(false);
+            TimeSpan delay = GetDelayUntilNextCheck(config);
+            if (delay > TimeSpan.Zero)
+            {
+                await WaitForDelayOrSettingsChangeAsync(delay, cancellationToken).ConfigureAwait(false);
+            }
 
             if (cancellationToken.IsCancellationRequested)
             {
@@ -203,6 +206,25 @@ public sealed class UpdateAutomationService : IDisposable
                 SetSnapshot(Snapshot with { StatusMessage = $"Update automation persistence failed: {ex.Message}" });
             }
         }
+    }
+
+    private static TimeSpan GetDelayUntilNextCheck(AppConfig config)
+    {
+        int hours = Math.Clamp(config.Updates.CheckIntervalHours, 1, 168);
+        TimeSpan checkInterval = TimeSpan.FromHours(hours);
+        string lastCheckUtc = config.Updates.LastCheckUtc;
+        if (!DateTimeOffset.TryParse(lastCheckUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset parsed))
+        {
+            return TimeSpan.Zero;
+        }
+
+        TimeSpan elapsed = DateTimeOffset.UtcNow - parsed.ToUniversalTime();
+        if (elapsed >= checkInterval)
+        {
+            return TimeSpan.Zero;
+        }
+
+        return checkInterval - elapsed;
     }
 
     private async Task WaitForDelayOrSettingsChangeAsync(TimeSpan delay, CancellationToken cancellationToken)
@@ -255,9 +277,13 @@ public sealed class UpdateAutomationService : IDisposable
         string? temporary = null;
         try
         {
-            using HttpClient client = UpdateChecker.CreateHttpClient(DiagnosticsInfo.AppVersion, TimeSpan.FromMinutes(3));
+            using var downloadTimeoutCts = new CancellationTokenSource(DownloadTimeout);
+            using var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, downloadTimeoutCts.Token);
+            CancellationToken downloadToken = downloadCts.Token;
+
+            using HttpClient client = UpdateChecker.CreateHttpClient(DiagnosticsInfo.AppVersion, DownloadTimeout);
             using HttpResponseMessage response = await client
-                .GetAsync(requestedUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                .GetAsync(requestedUri, HttpCompletionOption.ResponseHeadersRead, downloadToken)
                 .ConfigureAwait(false);
             if (response.StatusCode is not HttpStatusCode.OK)
             {
@@ -279,13 +305,44 @@ public sealed class UpdateAutomationService : IDisposable
                 return;
             }
 
+            if (response.Content.Headers.ContentLength is long contentLength && contentLength > MaxInstallerSizeBytes)
+            {
+                SetSnapshot(Snapshot with { StatusMessage = "Installer download exceeds maximum allowed size." });
+                return;
+            }
+
             string destination = Path.Combine(updatesDir, fileName);
             temporary = destination + ".tmp";
 
             await using (FileStream target = File.Create(temporary))
-            await using (Stream source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+            await using (Stream source = await response.Content.ReadAsStreamAsync(downloadToken).ConfigureAwait(false))
             {
-                await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(81920);
+                try
+                {
+                    long totalBytesRead = 0;
+                    while (true)
+                    {
+                        int bytesRead = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), downloadToken).ConfigureAwait(false);
+                        if (bytesRead == 0)
+                        {
+                            break;
+                        }
+
+                        totalBytesRead += bytesRead;
+                        if (totalBytesRead > MaxInstallerSizeBytes)
+                        {
+                            SetSnapshot(Snapshot with { StatusMessage = "Installer download exceeds maximum allowed size." });
+                            return;
+                        }
+
+                        await target.WriteAsync(buffer.AsMemory(0, bytesRead), downloadToken).ConfigureAwait(false);
+                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
             }
 
             File.Move(temporary, destination, overwrite: true);
