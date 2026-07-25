@@ -98,9 +98,10 @@ already filled in — please add a screenshot if you can. **Copy diagnostics** p
 the same block on the clipboard if you would rather paste it somewhere else.
 
 The About page has a **Check for updates** button that compares your build
-against the latest published stable release. You can also enable automatic
-stable-update checks (and optional installer auto-download with manual install
-confirmation) in **Settings**.
+against the latest published stable release. Automatic stable-update checks are
+enabled by default when the config app is open (you can turn them off in
+**Settings**), and optional installer auto-download still requires manual
+install confirmation.
 
 ## License
 

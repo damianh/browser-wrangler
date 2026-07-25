@@ -16,7 +16,7 @@ public sealed class ConfigStore
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
         Converters = { new JsonStringEnumConverter() },
     };
-    private static readonly string ManagedUpdatesDirectoryPath = Path.GetFullPath(Path.Combine(
+    private static readonly string DefaultManagedUpdatesDirectoryPath = Path.GetFullPath(Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "BrowserWrangler",
         "updates"));
@@ -25,13 +25,18 @@ public sealed class ConfigStore
         : this(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "BrowserWrangler",
-            "config.json"))
+            "config.json"), DefaultManagedUpdatesDirectoryPath)
     {
     }
 
-    public ConfigStore(string configFilePath) => ConfigFilePath = configFilePath;
+    public ConfigStore(string configFilePath, string? managedUpdatesDirectoryPath = null)
+    {
+        ConfigFilePath = configFilePath;
+        ManagedUpdatesDirectoryPath = Path.GetFullPath(managedUpdatesDirectoryPath ?? DefaultManagedUpdatesDirectoryPath);
+    }
 
     public string ConfigFilePath { get; }
+    private string ManagedUpdatesDirectoryPath { get; }
 
     public AppConfig Load(Version? runningVersion = null)
     {
@@ -54,12 +59,7 @@ public sealed class ConfigStore
             }
         }
 
-        bool changed = FixUp(config, runningVersion);
-        if (changed)
-        {
-            Save(config);
-        }
-
+        _ = FixUp(config, runningVersion);
         return config;
     }
 
@@ -82,7 +82,7 @@ public sealed class ConfigStore
     }
 
     /// <summary>Restores non-serialized back references after deserialization.</summary>
-    private static bool FixUp(AppConfig config, Version? runningVersion)
+    private bool FixUp(AppConfig config, Version? runningVersion)
     {
         bool changed = false;
         int clampedIntervalHours = Math.Clamp(config.Updates.CheckIntervalHours, 1, 168);
@@ -99,16 +99,23 @@ public sealed class ConfigStore
             changed = true;
         }
 
+        if (config.Updates.PendingInstallerPath.Length > 0
+            && !TryNormalizeManagedPendingInstallerPathForStore(config.Updates.PendingInstallerPath, out _))
+        {
+            config.Updates.PendingInstallerPath = string.Empty;
+            config.Updates.PendingInstallerVersion = string.Empty;
+            changed = true;
+        }
+
         if (runningVersion is not null
             && config.Updates.PendingInstallerPath.Length > 0
-            && config.Updates.PendingInstallerVersion.Length > 0
             && File.Exists(config.Updates.PendingInstallerPath))
         {
             bool clearPending = !Version.TryParse(config.Updates.PendingInstallerVersion, out Version? pendingVersion)
                 || NormalizeVersion(pendingVersion) <= NormalizeVersion(runningVersion);
             if (clearPending)
             {
-                if (TryGetManagedPendingInstallerPath(config.Updates.PendingInstallerPath, out string managedPendingInstallerPath))
+                if (TryNormalizeManagedPendingInstallerPathForStore(config.Updates.PendingInstallerPath, out string managedPendingInstallerPath))
                 {
                     try
                     {
@@ -142,7 +149,13 @@ public sealed class ConfigStore
     private static Version NormalizeVersion(Version version) =>
         new(version.Major, version.Minor, Math.Max(version.Build, 0), Math.Max(version.Revision, 0));
 
-    private static bool TryGetManagedPendingInstallerPath(string pendingInstallerPath, out string normalizedManagedPath)
+    public static bool TryNormalizeManagedPendingInstallerPath(string pendingInstallerPath, out string normalizedManagedPath) =>
+        TryNormalizeManagedPendingInstallerPath(pendingInstallerPath, DefaultManagedUpdatesDirectoryPath, out normalizedManagedPath);
+
+    private bool TryNormalizeManagedPendingInstallerPathForStore(string pendingInstallerPath, out string normalizedManagedPath) =>
+        TryNormalizeManagedPendingInstallerPath(pendingInstallerPath, ManagedUpdatesDirectoryPath, out normalizedManagedPath);
+
+    private static bool TryNormalizeManagedPendingInstallerPath(string pendingInstallerPath, string managedUpdatesDirectoryPath, out string normalizedManagedPath)
     {
         normalizedManagedPath = string.Empty;
         if (pendingInstallerPath.Length == 0)
@@ -153,7 +166,7 @@ public sealed class ConfigStore
         try
         {
             string normalizedPath = Path.GetFullPath(pendingInstallerPath);
-            string managedRoot = ManagedUpdatesDirectoryPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            string managedRoot = managedUpdatesDirectoryPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                 + Path.DirectorySeparatorChar;
             if (!normalizedPath.StartsWith(managedRoot, StringComparison.OrdinalIgnoreCase))
             {

@@ -132,14 +132,11 @@ public class ConfigStoreTests : IDisposable
     [Fact]
     public void Load_clears_and_deletes_pending_installer_when_not_newer_than_running_app()
     {
-        ConfigStore store = MakeStore();
+        string updatesDir = Path.Combine(_dir, "updates");
+        ConfigStore store = new(Path.Combine(_dir, "config.json"), updatesDir);
         Directory.CreateDirectory(_dir);
-        string updatesDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "BrowserWrangler",
-            "updates");
         Directory.CreateDirectory(updatesDir);
-        string pendingInstallerPath = Path.Combine(updatesDir, "BrowserWrangler-2026.801.4-x64-setup.exe");
+        string pendingInstallerPath = Path.Combine(updatesDir, $"BrowserWrangler-{Guid.NewGuid():N}-setup.exe");
         File.WriteAllText(pendingInstallerPath, "installer");
         File.WriteAllText(
             store.ConfigFilePath,
@@ -185,11 +182,63 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
-    public void Load_keeps_pending_installer_when_it_is_newer_than_running_app()
+    public void Load_clears_pending_installer_with_empty_version_when_running_version_is_known()
     {
         ConfigStore store = MakeStore();
         Directory.CreateDirectory(_dir);
         string pendingInstallerPath = Path.Combine(_dir, "BrowserWrangler-2026.801.4-x64-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{pendingInstallerPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": ""
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+        Assert.True(File.Exists(pendingInstallerPath));
+    }
+
+    [Fact]
+    public void Load_clears_newer_pending_installer_metadata_without_deleting_unmanaged_path()
+    {
+        ConfigStore store = MakeStore();
+        Directory.CreateDirectory(_dir);
+        string pendingInstallerPath = Path.Combine(_dir, "BrowserWrangler-2026.801.4-x64-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{pendingInstallerPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": "2026.801.5"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+        Assert.True(File.Exists(pendingInstallerPath));
+    }
+
+    [Fact]
+    public void Load_keeps_pending_installer_when_it_is_newer_than_running_app_and_managed()
+    {
+        string updatesDir = Path.Combine(_dir, "updates");
+        ConfigStore store = new(Path.Combine(_dir, "config.json"), updatesDir);
+        Directory.CreateDirectory(_dir);
+        Directory.CreateDirectory(updatesDir);
+        string pendingInstallerPath = Path.Combine(updatesDir, $"BrowserWrangler-{Guid.NewGuid():N}-setup.exe");
         File.WriteAllText(pendingInstallerPath, "installer");
         File.WriteAllText(
             store.ConfigFilePath,

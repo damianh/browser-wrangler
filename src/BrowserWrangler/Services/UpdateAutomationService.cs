@@ -156,7 +156,6 @@ public sealed class UpdateAutomationService : IDisposable
         lock (_loopSignalLock)
         {
             signal = _loopSignal;
-            _loopSignal = NewLoopSignal();
         }
 
         _ = signal.TrySetResult();
@@ -219,6 +218,11 @@ public sealed class UpdateAutomationService : IDisposable
         }
 
         TimeSpan elapsed = DateTimeOffset.UtcNow - parsed.ToUniversalTime();
+        if (elapsed < TimeSpan.Zero)
+        {
+            elapsed = TimeSpan.Zero;
+        }
+
         if (elapsed >= checkInterval)
         {
             return TimeSpan.Zero;
@@ -232,7 +236,15 @@ public sealed class UpdateAutomationService : IDisposable
         Task settingsChanged;
         lock (_loopSignalLock)
         {
-            settingsChanged = _loopSignal.Task;
+            if (_loopSignal.Task.IsCompleted)
+            {
+                settingsChanged = _loopSignal.Task;
+                _loopSignal = NewLoopSignal();
+            }
+            else
+            {
+                settingsChanged = _loopSignal.Task;
+            }
         }
 
         Task delayTask = Task.Delay(delay, cancellationToken);
@@ -348,11 +360,14 @@ public sealed class UpdateAutomationService : IDisposable
             File.Move(temporary, destination, overwrite: true);
             temporary = null;
 
+            string previousPendingInstallerPath = string.Empty;
             AppState.MutateAndSave(config =>
             {
+                previousPendingInstallerPath = config.Updates.PendingInstallerPath;
                 config.Updates.PendingInstallerPath = destination;
                 config.Updates.PendingInstallerVersion = expectedVersion;
             });
+            TryDeleteReplacedPendingInstaller(previousPendingInstallerPath, destination, updatesDir);
 
             SetSnapshot(Snapshot with
             {
@@ -421,6 +436,64 @@ public sealed class UpdateAutomationService : IDisposable
         }
 
         return Path.GetFileName(requestedUri.LocalPath);
+    }
+
+    private static void TryDeleteReplacedPendingInstaller(string oldPath, string newPath, string managedUpdatesDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(oldPath))
+        {
+            return;
+        }
+
+        string oldFullPath;
+        string newFullPath;
+        string managedDirFullPath;
+        try
+        {
+            oldFullPath = Path.GetFullPath(oldPath);
+            newFullPath = Path.GetFullPath(newPath);
+            managedDirFullPath = Path.GetFullPath(managedUpdatesDirectory);
+        }
+        catch (ArgumentException)
+        {
+            return;
+        }
+        catch (NotSupportedException)
+        {
+            return;
+        }
+        catch (PathTooLongException)
+        {
+            return;
+        }
+
+        if (string.Equals(oldFullPath, newFullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        string managedDirPrefix = managedDirFullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        if (!oldFullPath.StartsWith(managedDirPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!File.Exists(oldFullPath))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(oldFullPath);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 
     private void SetSnapshot(UpdateAutomationSnapshot snapshot)
