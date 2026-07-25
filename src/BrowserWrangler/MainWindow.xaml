@@ -41,6 +41,23 @@
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>
-        <Frame x:Name="ContentFrame" />
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <InfoBar
+                x:Name="DefaultBrowserInfoBar"
+                Margin="12,12,12,0"
+                IsOpen="False"
+                Severity="Warning"
+                Title="Not your default browser"
+                Message="Windows is still sending links somewhere else, so your rules will not run.">
+                <InfoBar.ActionButton>
+                    <Button Click="FixDefaultBrowser_Click" Content="Fix this" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+            <Frame x:Name="ContentFrame" Grid.Row="1" />
+        </Grid>
     </NavigationView>
 </Window>

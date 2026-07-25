@@ -1,4 +1,5 @@
 using BrowserWrangler.Core.Configuration;
+using BrowserWrangler.Core.Setup;
 using BrowserWrangler.Pages;
 using BrowserWrangler.Services;
 using Microsoft.UI.Windowing;
@@ -22,6 +23,24 @@ public sealed partial class MainWindow : Window
         RestoreWindowBounds();
         Closed += (_, _) => SaveWindowBounds();
         Nav.SelectedItem = Nav.MenuItems[0];
+        Activated += OnActivated;
+    }
+
+    private void OnActivated(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState == WindowActivationState.Deactivated)
+        {
+            return;
+        }
+
+        // re-check on every activation: the user may have just changed it in Windows Settings
+        DefaultBrowserInfoBar.IsOpen = !BrowserRegistration.IsDefaultBrowser(out _, out _);
+    }
+
+    private void FixDefaultBrowser_Click(object sender, RoutedEventArgs e)
+    {
+        BrowserRegistration.EnsureRegistered();
+        BrowserRegistration.OpenDefaultAppsSettings();
     }
 
     private void RestoreWindowBounds()

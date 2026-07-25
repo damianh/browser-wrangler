@@ -6,6 +6,7 @@ namespace BrowserWrangler;
 public partial class App : Application
 {
     private Window? _window;
+    private MainWindow? _mainWindow;
 
     public static new App? Current => Application.Current as App;
 
@@ -31,13 +32,29 @@ public partial class App : Application
             case LaunchMode.Toast:
                 _window = new ToastWindow(LaunchContext.ToastText, LaunchContext.Config.Toast.VisibleSeconds);
                 break;
+            case LaunchMode.Welcome:
+                _window = new WelcomeWindow();
+                break;
             default:
-                _window = new MainWindow();
+                _window = _mainWindow = new MainWindow();
                 break;
         }
 
         _window.Activate();
     }
 
-    public void ActivateMainWindow() => _window?.Activate();
+    /// <summary>Opens (or brings forward) the config window, e.g. from the first-run window.</summary>
+    public void ShowMainWindow()
+    {
+        if (_mainWindow is null)
+        {
+            _mainWindow = new MainWindow();
+            _mainWindow.Closed += (_, _) => _mainWindow = null;
+        }
+
+        _window = _mainWindow;
+        _mainWindow.Activate();
+    }
+
+    public void ActivateMainWindow() => (_mainWindow as Window ?? _window)?.Activate();
 }
