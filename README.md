@@ -85,6 +85,16 @@ browser in Windows Settings.
 - `tests/BrowserWrangler.Core.Tests` — xUnit tests
 - `installer/` — Inno Setup script and winget manifest templates
 
+## Reporting a problem
+
+Open the **About** page in the app and click **Report an issue**. That opens a bug
+report with the app info (version, runtime, Windows build, config and log paths)
+already filled in — please add a screenshot if you can. **Copy diagnostics** puts
+the same block on the clipboard if you would rather paste it somewhere else.
+
+The About page also has a **Check for updates** button that compares your build
+against the latest published release.
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE). Portions derived from

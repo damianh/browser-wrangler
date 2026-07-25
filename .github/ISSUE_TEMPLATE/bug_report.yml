@@ -1,0 +1,68 @@
+name: Bug report
+description: Something in Browser Wrangler is not working as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        Tip: the **About** page in Browser Wrangler has a *Report an issue* button that
+        opens this form with the "App info" box already filled in for you.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem. What did you click, and what did Browser Wrangler do?
+      placeholder: I clicked a link in Outlook and it opened in Edge instead of the Work profile.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence of steps that reliably shows the problem.
+      placeholder: |
+        1. Add a rule matching `*.example.com` to Firefox / Work
+        2. Click https://docs.example.com from Slack
+        3. Observe which browser opens
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or screen recording
+      description: |
+        Browser Wrangler is a desktop app, so a picture is usually worth a hundred words —
+        please add one if you can. Screenshots of the Rules page, the picker, or any error
+        dialog are especially helpful.
+
+        Just paste from the clipboard or drag files straight into this box and GitHub will
+        upload them for you. Short screen recordings (mp4 / gif / mov) work too.
+      placeholder: Paste or drag images here.
+    validations:
+      required: false
+
+  # NOTE: the `app-info` id below is prefilled by AboutPage in the desktop app
+  # (see src/BrowserWrangler/Pages/AboutPage.xaml.cs). Renaming this file or this
+  # field id will silently stop that prefill from working.
+  - type: textarea
+    id: app-info
+    attributes:
+      label: App info
+      description: >-
+        Copied from About → Copy diagnostics. Prefilled automatically when you use the
+        "Report an issue" button in the app.
+      render: text
+    validations:
+      required: false
