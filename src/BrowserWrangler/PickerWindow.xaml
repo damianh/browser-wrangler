@@ -24,11 +24,13 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock
-                    x:Name="TitleBarText"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    Text="Browser Wrangler" />
+                <Grid Grid.Column="0" x:Name="TitleBarDragRegion">
+                    <TextBlock
+                        x:Name="TitleBarText"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Text="Browser Wrangler" />
+                </Grid>
                 <Button
                     x:Name="CloseButton"
                     Grid.Column="1"

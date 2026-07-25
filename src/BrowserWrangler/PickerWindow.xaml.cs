@@ -167,7 +167,7 @@ public sealed partial class PickerWindow : Window
         appWindow.IsShownInSwitchers = false;
         Title = "Browser Wrangler";
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarHost);
+        SetTitleBar(TitleBarDragRegion);
 
         // round the actual window corners so they match the XAML border,
         // and remove the native DWM border so only the XAML 1px stroke shows
@@ -355,7 +355,7 @@ public sealed partial class PickerWindow : Window
 
         if (e.Key is VirtualKey.Enter or VirtualKey.Space)
         {
-            if (ProfileList.SelectedItem is ListViewItem { Tag: BrowserProfile selected })
+            if (!e.Handled && ProfileList.SelectedItem is ListViewItem { Tag: BrowserProfile selected })
             {
                 e.Handled = true;
                 Pick(selected);
