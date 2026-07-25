@@ -137,7 +137,9 @@ public class DiscoveryParserTests
                 {
                     Assert.Equal("Profile0", profile.Id);
                     Assert.Equal("Work", profile.Name);
-                    Assert.Equal("\"%url%\" -foreground -P \"Work\"", profile.LaunchArg);
+                    Assert.Equal(
+                        $"\"%url%\" -foreground -profile \"{Path.Combine(dir, "Profiles", "work.default-release")}\"",
+                        profile.LaunchArg);
                 },
                 profile =>
                 {
@@ -221,7 +223,14 @@ public class DiscoveryParserTests
                 FirefoxProfiles.Discover(browser, "308046B0AF4A39CB");
 
                 Assert.Contains(browser.Profiles, p => p.Name == "Personal" && p.Id == "Profile0");
-                Assert.Contains(browser.Profiles, p => p.Name == "Duende" && p.LaunchArg == "\"%url%\" -foreground -P \"Duende\"");
+                string duendePath = Path.Combine(dir, "Profiles", "7KX43bSd.Profile 1");
+                Assert.Contains(
+                    browser.Profiles,
+                    p => p.Name == "Duende" && p.LaunchArg == $"\"%url%\" -foreground -profile \"{duendePath}\"");
+                string personalPath = Path.Combine(dir, "Profiles", "znyagmvf.default-release");
+                Assert.Contains(
+                    browser.Profiles,
+                    p => p.Name == "Personal" && p.LaunchArg == $"\"%url%\" -foreground -profile \"{personalPath}\"");
                 Assert.Contains(browser.Profiles, p => p.Id == "private" && p.IsIncognito);
             }
             finally
@@ -291,7 +300,8 @@ public class DiscoveryParserTests
             Assert.Contains(browser.Profiles, p =>
                 p.Id == "Profile0+c_7" &&
                 p.Name == "default-release :: Dev Team" &&
-                p.LaunchArg == "\"ext+container:name=Dev%20Team&url=%url_encoded%\" -foreground -P \"default-release\"");
+                p.LaunchArg ==
+                    $"\"ext+container:name=Dev%20Team&url=%url_encoded%\" -foreground -profile \"{profileDir}\"");
             Assert.Contains(browser.Profiles, p => p.Id == "private" && p.IsIncognito);
         }
         finally
