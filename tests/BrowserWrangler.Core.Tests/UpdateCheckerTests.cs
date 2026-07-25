@@ -31,7 +31,11 @@ public class UpdateCheckerTests
 
     private static string ReleaseJson(string tag) =>
         $$"""
-        { "tag_name": "{{tag}}", "html_url": "https://github.com/damianh/browser-wrangler/releases/tag/{{tag}}" }
+        {
+          "tag_name": "{{tag}}",
+          "html_url": "https://github.com/damianh/browser-wrangler/releases/tag/{{tag}}",
+          "prerelease": false
+        }
         """;
 
     private static UpdateChecker MakeChecker(HttpMessageHandler handler) =>
@@ -40,13 +44,29 @@ public class UpdateCheckerTests
     [Fact]
     public async Task Reports_update_available_when_release_is_newer()
     {
-        UpdateChecker checker = MakeChecker(new StubHandler(Json(ReleaseJson("v2026.801.4"))));
+        UpdateChecker checker = MakeChecker(new StubHandler(Json(
+            """
+            {
+              "tag_name": "v2026.801.4",
+              "html_url": "https://github.com/damianh/browser-wrangler/releases/tag/v2026.801.4",
+              "prerelease": false,
+              "assets": [
+                {
+                  "name": "BrowserWrangler-2026.801.4-x64-setup.exe",
+                  "browser_download_url": "https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4/BrowserWrangler-2026.801.4-x64-setup.exe"
+                }
+              ]
+            }
+            """)));
 
-        UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10));
+        UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10), "x64");
 
         Assert.Equal(UpdateCheckStatus.UpdateAvailable, result.Status);
         Assert.Equal(new Version(2026, 801, 4, 0), result.LatestVersion);
         Assert.Equal("https://github.com/damianh/browser-wrangler/releases/tag/v2026.801.4", result.ReleaseUrl);
+        Assert.Equal(
+            "https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4/BrowserWrangler-2026.801.4-x64-setup.exe",
+            result.InstallerDownloadUrl);
     }
 
     [Fact]
@@ -121,13 +141,53 @@ public class UpdateCheckerTests
     [Fact]
     public async Task Reports_update_available_when_release_url_is_not_a_string()
     {
-        UpdateChecker checker = MakeChecker(new StubHandler(Json("{ \"tag_name\": \"v2026.801.4\", \"html_url\": 42 }")));
+        UpdateChecker checker = MakeChecker(new StubHandler(Json("{ \"tag_name\": \"v2026.801.4\", \"html_url\": 42, \"prerelease\": false }")));
 
         UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10));
 
         Assert.Equal(UpdateCheckStatus.UpdateAvailable, result.Status);
         Assert.Equal(new Version(2026, 801, 4, 0), result.LatestVersion);
         Assert.Null(result.ReleaseUrl);
+    }
+
+    [Fact]
+    public async Task Fails_when_latest_release_is_prerelease()
+    {
+        UpdateChecker checker = MakeChecker(new StubHandler(Json(
+            """
+            {
+              "tag_name": "v2026.801.4",
+              "html_url": "https://github.com/damianh/browser-wrangler/releases/tag/v2026.801.4",
+              "prerelease": true
+            }
+            """)));
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10));
+
+        Assert.Equal(UpdateCheckStatus.Failed, result.Status);
+        Assert.Contains("stable", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4/BrowserWrangler-2026.801.4-x64-setup.exe")]
+    [InlineData("https://objects.githubusercontent.com/github-production-release-asset-2e65be/123/abc")]
+    [InlineData("https://release-assets.githubusercontent.com/github-production-release-asset-2e65be/123/abc")]
+    public void Accepts_trusted_asset_urls(string url)
+    {
+        Assert.True(Uri.TryCreate(url, UriKind.Absolute, out Uri? uri));
+        Assert.NotNull(uri);
+        Assert.True(UpdateChecker.IsTrustedReleaseAssetUri(uri));
+    }
+
+    [Theory]
+    [InlineData("http://github.com/damianh/browser-wrangler/releases/download/v2026.801.4/BrowserWrangler-2026.801.4-x64-setup.exe")]
+    [InlineData("https://example.com/file.exe")]
+    [InlineData("https://github.com/other-owner/other-repo/releases/download/v1/file.exe")]
+    public void Rejects_untrusted_asset_urls(string url)
+    {
+        Assert.True(Uri.TryCreate(url, UriKind.Absolute, out Uri? uri));
+        Assert.NotNull(uri);
+        Assert.False(UpdateChecker.IsTrustedReleaseAssetUri(uri));
     }
 
     [Fact]

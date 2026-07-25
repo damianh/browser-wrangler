@@ -9,10 +9,36 @@ namespace BrowserWrangler.Services;
 public static class AppState
 {
     private static readonly ConfigStore Store = new();
+    private static readonly UpdateAutomationService UpdateService = new();
+    private static bool _updateAutomationStarted;
 
     public static AppConfig Config { get; private set; } = LaunchContext.Config;
 
+    public static UpdateAutomationService Updates => UpdateService;
+
     public static void Save() => Store.Save(Config);
+
+    public static void EnsureUpdateAutomationStarted()
+    {
+        if (_updateAutomationStarted)
+        {
+            return;
+        }
+
+        _updateAutomationStarted = true;
+        UpdateService.Start();
+    }
+
+    public static void StopUpdateAutomation()
+    {
+        if (!_updateAutomationStarted)
+        {
+            return;
+        }
+
+        _updateAutomationStarted = false;
+        UpdateService.Stop();
+    }
 
     /// <summary>Re-discovers browsers and merges with the saved set, preserving user data.</summary>
     public static void RefreshBrowsers()

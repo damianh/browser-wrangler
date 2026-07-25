@@ -75,6 +75,13 @@ public sealed class ConfigStore
     /// <summary>Restores non-serialized back references after deserialization.</summary>
     private static void FixUp(AppConfig config)
     {
+        config.Updates.CheckIntervalHours = Math.Clamp(config.Updates.CheckIntervalHours, 1, 168);
+        if (config.Updates.PendingInstallerPath.Length > 0 && !File.Exists(config.Updates.PendingInstallerPath))
+        {
+            config.Updates.PendingInstallerPath = string.Empty;
+            config.Updates.PendingInstallerVersion = string.Empty;
+        }
+
         foreach (Browser browser in config.Browsers)
         {
             foreach (BrowserProfile profile in browser.Profiles)

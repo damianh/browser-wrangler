@@ -34,6 +34,9 @@ public sealed partial class SettingsPage : Page
         SafelinksEnabled.IsOn = AppState.Config.Pipeline.UnwrapSafelinks;
         ExpandShortLinksEnabled.IsOn = AppState.Config.Pipeline.ExpandShortenedUrls;
         LogRuleHitsEnabled.IsOn = AppState.Config.LogRuleHits;
+        AutoCheckUpdatesEnabled.IsOn = AppState.Config.Updates.AutoCheckEnabled;
+        UpdateIntervalHours.Value = AppState.Config.Updates.CheckIntervalHours;
+        AutoDownloadInstallerEnabled.IsOn = AppState.Config.Updates.AutoDownloadInstaller;
         _loading = false;
     }
 
@@ -69,6 +72,8 @@ public sealed partial class SettingsPage : Page
         AppState.Config.Pipeline.UnwrapSafelinks = SafelinksEnabled.IsOn;
         AppState.Config.Pipeline.ExpandShortenedUrls = ExpandShortLinksEnabled.IsOn;
         AppState.Config.LogRuleHits = LogRuleHitsEnabled.IsOn;
+        AppState.Config.Updates.AutoCheckEnabled = AutoCheckUpdatesEnabled.IsOn;
+        AppState.Config.Updates.AutoDownloadInstaller = AutoDownloadInstallerEnabled.IsOn;
         AppState.Save();
     }
 
@@ -80,6 +85,7 @@ public sealed partial class SettingsPage : Page
         }
 
         AppState.Config.Toast.VisibleSeconds = (int)ToastDuration.Value;
+        AppState.Config.Updates.CheckIntervalHours = Math.Clamp((int)UpdateIntervalHours.Value, 1, 168);
         AppState.Save();
     }
 }

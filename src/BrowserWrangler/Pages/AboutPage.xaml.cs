@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -29,7 +30,21 @@ public sealed partial class AboutPage : Page
         CopyrightText.Text = DiagnosticsInfo.Copyright;
         LoadAppIcon();
         BuildAppInfoGrid();
+        Loaded += AboutPage_Loaded;
+        Unloaded += AboutPage_Unloaded;
     }
+
+    private void AboutPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        AppState.Updates.SnapshotChanged += Updates_SnapshotChanged;
+        ApplyUpdateSnapshot();
+    }
+
+    private void AboutPage_Unloaded(object sender, RoutedEventArgs e) =>
+        AppState.Updates.SnapshotChanged -= Updates_SnapshotChanged;
+
+    private void Updates_SnapshotChanged(object? sender, EventArgs e) =>
+        _ = DispatcherQueue.TryEnqueue(ApplyUpdateSnapshot);
 
     private void LoadAppIcon()
     {
@@ -148,29 +163,86 @@ public sealed partial class AboutPage : Page
 
         try
         {
-            using HttpClient client = UpdateChecker.CreateHttpClient(DiagnosticsInfo.AppVersion);
-            var checker = new UpdateChecker(client);
-            UpdateCheckResult result = await checker.CheckAsync(DiagnosticsInfo.AppVersion);
-
-            ShowStatus(result.Message);
-            if (result.ReleaseUrl is { Length: > 0 } releaseUrl && result.Status != UpdateCheckStatus.Failed)
-            {
-                UpdateLink.NavigateUri = new Uri(releaseUrl);
-                UpdateLink.Content = result.Status == UpdateCheckStatus.UpdateAvailable
-                    ? $"Download version {result.LatestVersion}"
-                    : "Open the release page";
-                UpdateLink.Visibility = Visibility.Visible;
-            }
+            _ = await AppState.Updates.CheckNowAsync();
+            ApplyUpdateSnapshot();
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
         {
-            ShowStatus($"The update check failed: {ex.Message}");
+            ShowStatus("The update check was canceled.");
         }
         finally
         {
             UpdateProgress.IsActive = false;
             CheckUpdatesButton.IsEnabled = true;
         }
+    }
+
+    private async void InstallUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        string installerPath = AppState.Config.Updates.PendingInstallerPath;
+        if (installerPath.Length == 0 || !File.Exists(installerPath))
+        {
+            ShowStatus("No downloaded installer is available.");
+            InstallUpdateButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        string versionText = AppState.Config.Updates.PendingInstallerVersion;
+        var confirm = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Install update now?",
+            Content = $"Version {versionText} is downloaded. Browser Wrangler will close when you run the installer.",
+            PrimaryButtonText = "Run installer",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await confirm.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+            ShowStatus($"Started installer for version {versionText}.");
+        }
+        catch (Win32Exception ex)
+        {
+            ShowStatus($"Could not start installer: {ex.Message}");
+        }
+        catch (FileNotFoundException ex)
+        {
+            ShowStatus($"Installer file was not found: {ex.Message}");
+        }
+    }
+
+    private void ApplyUpdateSnapshot()
+    {
+        UpdateAutomationSnapshot snapshot = AppState.Updates.Snapshot;
+        if (snapshot.StatusMessage.Length > 0)
+        {
+            ShowStatus(snapshot.StatusMessage);
+        }
+
+        UpdateProgress.IsActive = snapshot.IsChecking || snapshot.IsDownloading;
+        InstallUpdateButton.Visibility = snapshot.PendingInstallerPath.Length > 0 && File.Exists(snapshot.PendingInstallerPath)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        UpdateCheckResult? result = snapshot.LastCheckResult;
+        if (result is null || result.Status == UpdateCheckStatus.Failed || result.ReleaseUrl is not { Length: > 0 } releaseUrl)
+        {
+            UpdateLink.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        UpdateLink.NavigateUri = new Uri(releaseUrl);
+        UpdateLink.Content = result.Status == UpdateCheckStatus.UpdateAvailable
+            ? $"Open version {result.LatestVersion} release notes"
+            : "Open the release page";
+        UpdateLink.Visibility = Visibility.Visible;
     }
 
     private void ShowStatus(string message)

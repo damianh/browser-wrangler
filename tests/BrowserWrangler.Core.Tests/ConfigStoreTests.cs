@@ -25,6 +25,8 @@ public class ConfigStoreTests : IDisposable
         Assert.True(config.Picker.OnCtrlShift);
         Assert.True(config.Pipeline.UnwrapSafelinks);
         Assert.False(config.Pipeline.ExpandShortenedUrls);
+        Assert.True(config.Updates.AutoCheckEnabled);
+        Assert.Equal(24, config.Updates.CheckIntervalHours);
         Assert.Empty(config.Browsers);
     }
 
@@ -51,6 +53,9 @@ public class ConfigStoreTests : IDisposable
         config.Pipeline.ExpandShortenedUrls = true;
         config.Pipeline.Substitute = false;
         config.Pipeline.Substitutions.Add("substr|http://|https://");
+        config.Updates.AutoCheckEnabled = false;
+        config.Updates.CheckIntervalHours = 48;
+        config.Updates.AutoDownloadInstaller = true;
         store.Save(config);
 
         AppConfig loaded = store.Load();
@@ -72,6 +77,9 @@ public class ConfigStoreTests : IDisposable
         Assert.True(loaded.Pipeline.ExpandShortenedUrls);
         Assert.False(loaded.Pipeline.Substitute);
         Assert.Equal("substr|http://|https://", loaded.Pipeline.Substitutions[0]);
+        Assert.False(loaded.Updates.AutoCheckEnabled);
+        Assert.Equal(48, loaded.Updates.CheckIntervalHours);
+        Assert.True(loaded.Updates.AutoDownloadInstaller);
     }
 
     [Fact]
@@ -84,6 +92,30 @@ public class ConfigStoreTests : IDisposable
         AppConfig config = store.Load();
 
         Assert.Empty(config.Browsers);
+    }
+
+    [Fact]
+    public void Load_clamps_update_interval_and_clears_missing_pending_installer()
+    {
+        ConfigStore store = MakeStore();
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(
+            store.ConfigFilePath,
+            """
+            {
+              "Updates": {
+                "CheckIntervalHours": 1000,
+                "PendingInstallerPath": "C:\\missing\\installer.exe",
+                "PendingInstallerVersion": "2026.801.4"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load();
+
+        Assert.Equal(168, config.Updates.CheckIntervalHours);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
     }
 
     [Fact]

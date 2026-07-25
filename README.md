@@ -97,8 +97,10 @@ report with the app info (version, runtime, Windows build, config and log paths)
 already filled in — please add a screenshot if you can. **Copy diagnostics** puts
 the same block on the clipboard if you would rather paste it somewhere else.
 
-The About page also has a **Check for updates** button that compares your build
-against the latest published release.
+The About page has a **Check for updates** button that compares your build
+against the latest published stable release. You can also enable automatic
+stable-update checks (and optional installer auto-download with manual install
+confirmation) in **Settings**.
 
 ## License
 

@@ -21,7 +21,12 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"));
         RestoreWindowBounds();
-        Closed += (_, _) => SaveWindowBounds();
+        Closed += (_, _) =>
+        {
+            SaveWindowBounds();
+            AppState.StopUpdateAutomation();
+        };
+        AppState.EnsureUpdateAutomationStarted();
         Nav.SelectedItem = Nav.MenuItems[0];
         Activated += OnActivated;
     }

@@ -19,12 +19,18 @@ public enum UpdateCheckStatus
 /// <summary>Result of a single update check.</summary>
 public sealed class UpdateCheckResult
 {
-    private UpdateCheckResult(UpdateCheckStatus status, string message, Version? latestVersion, string? releaseUrl)
+    private UpdateCheckResult(
+        UpdateCheckStatus status,
+        string message,
+        Version? latestVersion,
+        string? releaseUrl,
+        string? installerDownloadUrl)
     {
         Status = status;
         Message = message;
         LatestVersion = latestVersion;
         ReleaseUrl = releaseUrl;
+        InstallerDownloadUrl = installerDownloadUrl;
     }
 
     public UpdateCheckStatus Status { get; }
@@ -38,15 +44,18 @@ public sealed class UpdateCheckResult
     /// <summary>Web page for the newest release, when it could be determined.</summary>
     public string? ReleaseUrl { get; }
 
-    public static UpdateCheckResult UpToDate(Version latestVersion, string? releaseUrl) =>
-        new(UpdateCheckStatus.UpToDate, $"You are running the latest version ({latestVersion}).", latestVersion, releaseUrl);
+    /// <summary>Trusted installer URL for this version, when an expected asset exists.</summary>
+    public string? InstallerDownloadUrl { get; }
 
-    public static UpdateCheckResult UpdateAvailable(Version latestVersion, string? releaseUrl) =>
-        new(UpdateCheckStatus.UpdateAvailable, $"Version {latestVersion} is available.", latestVersion, releaseUrl);
+    public static UpdateCheckResult UpToDate(Version latestVersion, string? releaseUrl) =>
+        new(UpdateCheckStatus.UpToDate, $"You are running the latest version ({latestVersion}).", latestVersion, releaseUrl, null);
+
+    public static UpdateCheckResult UpdateAvailable(Version latestVersion, string? releaseUrl, string? installerDownloadUrl) =>
+        new(UpdateCheckStatus.UpdateAvailable, $"Version {latestVersion} is available.", latestVersion, releaseUrl, installerDownloadUrl);
 
     public static UpdateCheckResult DevelopmentBuild(Version? latestVersion, string? releaseUrl) =>
-        new(UpdateCheckStatus.DevelopmentBuild, "This is a local development build, so there is nothing to compare against.", latestVersion, releaseUrl);
+        new(UpdateCheckStatus.DevelopmentBuild, "This is a local development build, so there is nothing to compare against.", latestVersion, releaseUrl, null);
 
     public static UpdateCheckResult Failed(string message) =>
-        new(UpdateCheckStatus.Failed, message, null, null);
+        new(UpdateCheckStatus.Failed, message, null, null, null);
 }

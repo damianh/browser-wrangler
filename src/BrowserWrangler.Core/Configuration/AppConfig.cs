@@ -57,6 +57,27 @@ public sealed class WindowSettings
     public int Y { get; set; } = int.MinValue;
 }
 
+/// <summary>Controls update checks and optional installer download behavior.</summary>
+public sealed class UpdateSettings
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public bool AutoCheckEnabled { get; set; } = true;
+
+    /// <summary>How often background checks run while the config app is open.</summary>
+    public int CheckIntervalHours { get; set; } = 24;
+
+    public bool AutoDownloadInstaller { get; set; }
+
+    /// <summary>UTC timestamp in "O" format for the last check attempt.</summary>
+    public string LastCheckUtc { get; set; } = string.Empty;
+
+    /// <summary>Downloaded installer path waiting for user confirmation.</summary>
+    public string PendingInstallerPath { get; set; } = string.Empty;
+
+    /// <summary>Version of the pending installer (ToString() value).</summary>
+    public string PendingInstallerVersion { get; set; } = string.Empty;
+}
+
 /// <summary>
 /// Root application configuration, persisted as JSON.
 /// </summary>
@@ -80,6 +101,8 @@ public sealed class AppConfig
     public PipelineSettings Pipeline { get; set; } = new();
 
     public WindowSettings Window { get; set; } = new();
+
+    public UpdateSettings Updates { get; set; } = new();
 
     public List<Browser> Browsers { get; set; } = [];
 }
