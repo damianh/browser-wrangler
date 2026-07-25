@@ -119,6 +119,45 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void Load_recovers_when_updates_or_update_strings_are_null()
+    {
+        ConfigStore store = MakeStore();
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(
+            store.ConfigFilePath,
+            """
+            {
+              "Updates": null
+            }
+            """);
+
+        AppConfig config = store.Load();
+
+        Assert.NotNull(config.Updates);
+        Assert.Equal(24, config.Updates.CheckIntervalHours);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+
+        File.WriteAllText(
+            store.ConfigFilePath,
+            """
+            {
+              "Updates": {
+                "LastCheckUtc": null,
+                "PendingInstallerPath": null,
+                "PendingInstallerVersion": null
+              }
+            }
+            """);
+
+        config = store.Load();
+
+        Assert.Equal(string.Empty, config.Updates.LastCheckUtc);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+    }
+
+    [Fact]
     public void Setup_is_incomplete_until_the_first_run_window_marks_it_done()
     {
         ConfigStore store = MakeStore();
@@ -184,9 +223,11 @@ public class ConfigStoreTests : IDisposable
     [Fact]
     public void Load_clears_pending_installer_with_empty_version_when_running_version_is_known()
     {
-        ConfigStore store = MakeStore();
+        string updatesDir = Path.Combine(_dir, "updates");
+        ConfigStore store = new(Path.Combine(_dir, "config.json"), updatesDir);
         Directory.CreateDirectory(_dir);
-        string pendingInstallerPath = Path.Combine(_dir, "BrowserWrangler-2026.801.4-x64-setup.exe");
+        Directory.CreateDirectory(updatesDir);
+        string pendingInstallerPath = Path.Combine(updatesDir, $"BrowserWrangler-{Guid.NewGuid():N}-setup.exe");
         File.WriteAllText(pendingInstallerPath, "installer");
         File.WriteAllText(
             store.ConfigFilePath,
@@ -203,7 +244,7 @@ public class ConfigStoreTests : IDisposable
 
         Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
         Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
-        Assert.True(File.Exists(pendingInstallerPath));
+        Assert.False(File.Exists(pendingInstallerPath));
     }
 
     [Fact]
@@ -256,5 +297,33 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal(pendingInstallerPath, config.Updates.PendingInstallerPath);
         Assert.Equal("2026.801.5", config.Updates.PendingInstallerVersion);
         Assert.True(File.Exists(pendingInstallerPath));
+    }
+
+    [Fact]
+    public void Load_normalizes_and_keeps_managed_pending_installer_path()
+    {
+        string updatesDir = Path.Combine(_dir, "updates");
+        ConfigStore store = new(Path.Combine(_dir, "config.json"), updatesDir);
+        Directory.CreateDirectory(_dir);
+        Directory.CreateDirectory(updatesDir);
+        string pendingInstallerPath = Path.Combine(updatesDir, $"BrowserWrangler-{Guid.NewGuid():N}-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        string nonNormalizedPath = Path.Combine(updatesDir, ".", "subdir", "..", Path.GetFileName(pendingInstallerPath));
+
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{nonNormalizedPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": "2026.801.5"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(pendingInstallerPath, config.Updates.PendingInstallerPath);
+        Assert.Equal("2026.801.5", config.Updates.PendingInstallerVersion);
     }
 }

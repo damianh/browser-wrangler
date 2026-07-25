@@ -85,6 +85,30 @@ public sealed class ConfigStore
     private bool FixUp(AppConfig config, Version? runningVersion)
     {
         bool changed = false;
+        if (config.Updates is null)
+        {
+            config.Updates = new UpdateSettings();
+            changed = true;
+        }
+
+        if (config.Updates.LastCheckUtc is null)
+        {
+            config.Updates.LastCheckUtc = string.Empty;
+            changed = true;
+        }
+
+        if (config.Updates.PendingInstallerPath is null)
+        {
+            config.Updates.PendingInstallerPath = string.Empty;
+            changed = true;
+        }
+
+        if (config.Updates.PendingInstallerVersion is null)
+        {
+            config.Updates.PendingInstallerVersion = string.Empty;
+            changed = true;
+        }
+
         int clampedIntervalHours = Math.Clamp(config.Updates.CheckIntervalHours, 1, 168);
         if (config.Updates.CheckIntervalHours != clampedIntervalHours)
         {
@@ -92,41 +116,49 @@ public sealed class ConfigStore
             changed = true;
         }
 
-        if (config.Updates.PendingInstallerPath.Length > 0 && !File.Exists(config.Updates.PendingInstallerPath))
+        if (config.Updates.PendingInstallerPath.Length > 0)
         {
-            config.Updates.PendingInstallerPath = string.Empty;
-            config.Updates.PendingInstallerVersion = string.Empty;
-            changed = true;
-        }
+            if (!TryNormalizeManagedPendingInstallerPathForStore(config.Updates.PendingInstallerPath, out string managedPendingInstallerPath))
+            {
+                config.Updates.PendingInstallerPath = string.Empty;
+                config.Updates.PendingInstallerVersion = string.Empty;
+                changed = true;
+            }
+            else
+            {
+                if (!string.Equals(config.Updates.PendingInstallerPath, managedPendingInstallerPath, StringComparison.Ordinal))
+                {
+                    config.Updates.PendingInstallerPath = managedPendingInstallerPath;
+                    changed = true;
+                }
 
-        if (config.Updates.PendingInstallerPath.Length > 0
-            && !TryNormalizeManagedPendingInstallerPathForStore(config.Updates.PendingInstallerPath, out _))
-        {
-            config.Updates.PendingInstallerPath = string.Empty;
-            config.Updates.PendingInstallerVersion = string.Empty;
-            changed = true;
+                if (!File.Exists(managedPendingInstallerPath))
+                {
+                    config.Updates.PendingInstallerPath = string.Empty;
+                    config.Updates.PendingInstallerVersion = string.Empty;
+                    changed = true;
+                }
+            }
         }
 
         if (runningVersion is not null
             && config.Updates.PendingInstallerPath.Length > 0
-            && File.Exists(config.Updates.PendingInstallerPath))
+            && TryNormalizeManagedPendingInstallerPathForStore(config.Updates.PendingInstallerPath, out string managedPendingInstallerPathForDeletion)
+            && File.Exists(managedPendingInstallerPathForDeletion))
         {
             bool clearPending = !Version.TryParse(config.Updates.PendingInstallerVersion, out Version? pendingVersion)
                 || NormalizeVersion(pendingVersion) <= NormalizeVersion(runningVersion);
             if (clearPending)
             {
-                if (TryNormalizeManagedPendingInstallerPathForStore(config.Updates.PendingInstallerPath, out string managedPendingInstallerPath))
+                try
                 {
-                    try
-                    {
-                        File.Delete(managedPendingInstallerPath);
-                    }
-                    catch (IOException)
-                    {
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                    }
+                    File.Delete(managedPendingInstallerPathForDeletion);
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
                 }
 
                 config.Updates.PendingInstallerPath = string.Empty;
