@@ -9,6 +9,8 @@ Browser Wrangler registers itself as a browser on Windows, intercepts the links
 you click, and routes them to the right browser and profile based on rules you
 define — with an optional picker popup and toast notifications.
 
+Project website (GitHub Pages): https://damianh.github.io/browser-wrangler/
+
 It is a .NET 10 / WinUI 3 fork of [Browser Tamer](https://github.com/aloneguid/bt)
 by [aloneguid](https://github.com/aloneguid), licensed under the Apache License 2.0.
 
