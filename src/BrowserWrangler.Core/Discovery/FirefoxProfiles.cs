@@ -113,7 +113,10 @@ public static class FirefoxProfiles
                 continue;
             }
 
-            string argSuffix = $" -foreground -P \"{info.Name}\"";
+            // Select by directory, not by -P name: modern profiles live in the profile-group
+            // store and either have no profiles.ini entry or a different ini name, so -P fails
+            // and Firefox falls back to the profile manager.
+            string argSuffix = $" -foreground -profile \"{ResolveProfilePath(browser.DataPath, info)}\"";
             string arg = $"\"{BrowserProfile.UrlArgName}\"{argSuffix}";
             browser.Profiles.Add(new BrowserProfile(browser, info.SectionId, info.Name, arg)
             {
