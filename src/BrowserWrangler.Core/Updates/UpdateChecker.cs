@@ -16,6 +16,20 @@ public sealed class UpdateChecker
     public const string DefaultLatestReleaseApiUrl = "https://api.github.com/repos/damianh/browser-wrangler/releases/latest";
 
     private const string UnreadableResponse = "GitHub returned a response that could not be understood.";
+    private static readonly string[] KnownInstallerArchitectureTokens =
+    [
+        "-x64-",
+        "-arm64-",
+        "-x86-",
+        "-arm-",
+    ];
+    private static readonly HashSet<string> TrustedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "github.com",
+        "objects.githubusercontent.com",
+        "github-releases.githubusercontent.com",
+        "release-assets.githubusercontent.com",
+    };
 
     private readonly HttpClient _httpClient;
     private readonly string _latestReleaseApiUrl;
@@ -38,7 +52,10 @@ public sealed class UpdateChecker
         return client;
     }
 
-    public async Task<UpdateCheckResult> CheckAsync(Version currentVersion, CancellationToken cancellationToken = default)
+    public async Task<UpdateCheckResult> CheckAsync(
+        Version currentVersion,
+        string? preferredArchitecture = null,
+        CancellationToken cancellationToken = default)
     {
         string body;
         try
@@ -66,6 +83,7 @@ public sealed class UpdateChecker
 
         string? tag;
         string? releaseUrl;
+        string? installerDownloadUrl = null;
         try
         {
             using JsonDocument document = JsonDocument.Parse(body);
@@ -80,6 +98,17 @@ public sealed class UpdateChecker
 
             // The release page link is optional decoration; a wrong type here should not fail the check.
             releaseUrl = TryReadString(root, "html_url", out string? url) ? url : null;
+            if (!TryReadBoolean(root, "prerelease", out bool prerelease))
+            {
+                return UpdateCheckResult.Failed(UnreadableResponse);
+            }
+
+            if (prerelease)
+            {
+                return UpdateCheckResult.Failed("The newest release is marked as a prerelease; only stable releases are supported.");
+            }
+
+            installerDownloadUrl = FindTrustedInstallerAssetUrl(root, preferredArchitecture);
         }
         catch (JsonException)
         {
@@ -101,7 +130,7 @@ public sealed class UpdateChecker
         }
 
         return latestVersion > Normalize(currentVersion)
-            ? UpdateCheckResult.UpdateAvailable(latestVersion, releaseUrl)
+            ? UpdateCheckResult.UpdateAvailable(latestVersion, releaseUrl, installerDownloadUrl)
             : UpdateCheckResult.UpToDate(latestVersion, releaseUrl);
     }
 
@@ -116,6 +145,108 @@ public sealed class UpdateChecker
 
         value = element.GetString();
         return true;
+    }
+
+    private static bool TryReadBoolean(JsonElement owner, string propertyName, out bool value)
+    {
+        value = false;
+        if (!owner.TryGetProperty(propertyName, out JsonElement element) || element.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            return false;
+        }
+
+        value = element.GetBoolean();
+        return true;
+    }
+
+    /// <summary>Validates release asset URLs before any automatic download is attempted.</summary>
+    public static bool IsTrustedReleaseAssetUri(Uri uri)
+    {
+        if (!uri.IsAbsoluteUri || uri.Scheme != Uri.UriSchemeHttps || !TrustedDownloadHosts.Contains(uri.Host))
+        {
+            return false;
+        }
+
+        if (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+        {
+            string path = uri.AbsolutePath;
+            if (!path.StartsWith("/damianh/browser-wrangler/releases/download/", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static string? FindTrustedInstallerAssetUrl(JsonElement release, string? preferredArchitecture)
+    {
+        if (!release.TryGetProperty("assets", out JsonElement assets) || assets.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        string archToken = NormalizeArch(preferredArchitecture);
+        string? fallback = null;
+        foreach (JsonElement asset in assets.EnumerateArray())
+        {
+            if (asset.ValueKind != JsonValueKind.Object
+                || !TryReadString(asset, "name", out string? name)
+                || !TryReadString(asset, "browser_download_url", out string? url)
+                || name is null
+                || url is null)
+            {
+                continue;
+            }
+
+            if (!name.EndsWith("-setup.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) || !IsTrustedReleaseAssetUri(uri))
+            {
+                continue;
+            }
+
+            if (name.Contains($"-{archToken}-", StringComparison.OrdinalIgnoreCase))
+            {
+                return url;
+            }
+
+            if (IsArchitectureSpecificInstaller(name))
+            {
+                continue;
+            }
+
+            fallback ??= url;
+        }
+
+        return fallback;
+    }
+
+    private static bool IsArchitectureSpecificInstaller(string installerName)
+    {
+        foreach (string token in KnownInstallerArchitectureTokens)
+        {
+            if (installerName.Contains(token, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string NormalizeArch(string? preferredArchitecture)
+    {
+        if (string.IsNullOrWhiteSpace(preferredArchitecture))
+        {
+            return "x64";
+        }
+
+        string lowered = preferredArchitecture.Trim().ToLowerInvariant();
+        return lowered.Contains("arm", StringComparison.Ordinal) ? "arm64" : "x64";
     }
 
     /// <summary>Parses release tags such as "v2026.718.10" or "2026.718.10".</summary>

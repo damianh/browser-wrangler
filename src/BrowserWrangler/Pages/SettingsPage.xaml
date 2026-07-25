@@ -68,6 +68,21 @@
                 x:Name="LogRuleHitsEnabled"
                 Header="Record rule hits for viewing later"
                 Toggled="Setting_Changed" />
+
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="Updates" />
+            <ToggleSwitch
+                x:Name="AutoCheckUpdatesEnabled"
+                Header="Automatically check for stable updates while this app is open"
+                Toggled="Setting_Changed" />
+            <Slider
+                x:Name="UpdateIntervalHours"
+                Header="Check interval (hours)"
+                Minimum="1" Maximum="168" StepFrequency="1"
+                ValueChanged="Slider_Changed" />
+            <ToggleSwitch
+                x:Name="AutoDownloadInstallerEnabled"
+                Header="Automatically download update installer when a new stable version is found"
+                Toggled="Setting_Changed" />
         </StackPanel>
     </ScrollViewer>
 </Page>

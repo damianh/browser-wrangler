@@ -25,6 +25,8 @@ public class ConfigStoreTests : IDisposable
         Assert.True(config.Picker.OnCtrlShift);
         Assert.True(config.Pipeline.UnwrapSafelinks);
         Assert.False(config.Pipeline.ExpandShortenedUrls);
+        Assert.True(config.Updates.AutoCheckEnabled);
+        Assert.Equal(24, config.Updates.CheckIntervalHours);
         Assert.Empty(config.Browsers);
     }
 
@@ -51,6 +53,9 @@ public class ConfigStoreTests : IDisposable
         config.Pipeline.ExpandShortenedUrls = true;
         config.Pipeline.Substitute = false;
         config.Pipeline.Substitutions.Add("substr|http://|https://");
+        config.Updates.AutoCheckEnabled = false;
+        config.Updates.CheckIntervalHours = 48;
+        config.Updates.AutoDownloadInstaller = true;
         store.Save(config);
 
         AppConfig loaded = store.Load();
@@ -72,6 +77,9 @@ public class ConfigStoreTests : IDisposable
         Assert.True(loaded.Pipeline.ExpandShortenedUrls);
         Assert.False(loaded.Pipeline.Substitute);
         Assert.Equal("substr|http://|https://", loaded.Pipeline.Substitutions[0]);
+        Assert.False(loaded.Updates.AutoCheckEnabled);
+        Assert.Equal(48, loaded.Updates.CheckIntervalHours);
+        Assert.True(loaded.Updates.AutoDownloadInstaller);
     }
 
     [Fact]
@@ -87,6 +95,69 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void Load_clamps_update_interval_and_clears_missing_pending_installer()
+    {
+        ConfigStore store = MakeStore();
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(
+            store.ConfigFilePath,
+            """
+            {
+              "Updates": {
+                "CheckIntervalHours": 1000,
+                "PendingInstallerPath": "C:\\missing\\installer.exe",
+                "PendingInstallerVersion": "2026.801.4"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load();
+
+        Assert.Equal(168, config.Updates.CheckIntervalHours);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+    }
+
+    [Fact]
+    public void Load_recovers_when_updates_or_update_strings_are_null()
+    {
+        ConfigStore store = MakeStore();
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(
+            store.ConfigFilePath,
+            """
+            {
+              "Updates": null
+            }
+            """);
+
+        AppConfig config = store.Load();
+
+        Assert.NotNull(config.Updates);
+        Assert.Equal(24, config.Updates.CheckIntervalHours);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+
+        File.WriteAllText(
+            store.ConfigFilePath,
+            """
+            {
+              "Updates": {
+                "LastCheckUtc": null,
+                "PendingInstallerPath": null,
+                "PendingInstallerVersion": null
+              }
+            }
+            """);
+
+        config = store.Load();
+
+        Assert.Equal(string.Empty, config.Updates.LastCheckUtc);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+    }
+
+    [Fact]
     public void Setup_is_incomplete_until_the_first_run_window_marks_it_done()
     {
         ConfigStore store = MakeStore();
@@ -95,5 +166,164 @@ public class ConfigStoreTests : IDisposable
         store.Save(new AppConfig { SetupCompleted = true });
 
         Assert.True(store.Load().SetupCompleted);
+    }
+
+    [Fact]
+    public void Load_clears_and_deletes_pending_installer_when_not_newer_than_running_app()
+    {
+        string updatesDir = Path.Combine(_dir, "updates");
+        ConfigStore store = new(Path.Combine(_dir, "config.json"), updatesDir);
+        Directory.CreateDirectory(_dir);
+        Directory.CreateDirectory(updatesDir);
+        string pendingInstallerPath = Path.Combine(updatesDir, $"BrowserWrangler-{Guid.NewGuid():N}-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{pendingInstallerPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": "2026.801.4"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+        Assert.False(File.Exists(pendingInstallerPath));
+    }
+
+    [Fact]
+    public void Load_clears_stale_pending_installer_metadata_without_deleting_unmanaged_path()
+    {
+        ConfigStore store = MakeStore();
+        Directory.CreateDirectory(_dir);
+        string pendingInstallerPath = Path.Combine(_dir, "BrowserWrangler-2026.801.4-x64-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{pendingInstallerPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": "2026.801.4"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+        Assert.True(File.Exists(pendingInstallerPath));
+    }
+
+    [Fact]
+    public void Load_clears_pending_installer_with_empty_version_when_running_version_is_known()
+    {
+        string updatesDir = Path.Combine(_dir, "updates");
+        ConfigStore store = new(Path.Combine(_dir, "config.json"), updatesDir);
+        Directory.CreateDirectory(_dir);
+        Directory.CreateDirectory(updatesDir);
+        string pendingInstallerPath = Path.Combine(updatesDir, $"BrowserWrangler-{Guid.NewGuid():N}-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{pendingInstallerPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": ""
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+        Assert.False(File.Exists(pendingInstallerPath));
+    }
+
+    [Fact]
+    public void Load_clears_newer_pending_installer_metadata_without_deleting_unmanaged_path()
+    {
+        ConfigStore store = MakeStore();
+        Directory.CreateDirectory(_dir);
+        string pendingInstallerPath = Path.Combine(_dir, "BrowserWrangler-2026.801.4-x64-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{pendingInstallerPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": "2026.801.5"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerPath);
+        Assert.Equal(string.Empty, config.Updates.PendingInstallerVersion);
+        Assert.True(File.Exists(pendingInstallerPath));
+    }
+
+    [Fact]
+    public void Load_keeps_pending_installer_when_it_is_newer_than_running_app_and_managed()
+    {
+        string updatesDir = Path.Combine(_dir, "updates");
+        ConfigStore store = new(Path.Combine(_dir, "config.json"), updatesDir);
+        Directory.CreateDirectory(_dir);
+        Directory.CreateDirectory(updatesDir);
+        string pendingInstallerPath = Path.Combine(updatesDir, $"BrowserWrangler-{Guid.NewGuid():N}-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{pendingInstallerPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": "2026.801.5"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(pendingInstallerPath, config.Updates.PendingInstallerPath);
+        Assert.Equal("2026.801.5", config.Updates.PendingInstallerVersion);
+        Assert.True(File.Exists(pendingInstallerPath));
+    }
+
+    [Fact]
+    public void Load_normalizes_and_keeps_managed_pending_installer_path()
+    {
+        string updatesDir = Path.Combine(_dir, "updates");
+        ConfigStore store = new(Path.Combine(_dir, "config.json"), updatesDir);
+        Directory.CreateDirectory(_dir);
+        Directory.CreateDirectory(updatesDir);
+        string pendingInstallerPath = Path.Combine(updatesDir, $"BrowserWrangler-{Guid.NewGuid():N}-setup.exe");
+        File.WriteAllText(pendingInstallerPath, "installer");
+        string nonNormalizedPath = Path.Combine(updatesDir, ".", "subdir", "..", Path.GetFileName(pendingInstallerPath));
+
+        File.WriteAllText(
+            store.ConfigFilePath,
+            $$"""
+            {
+              "Updates": {
+                "PendingInstallerPath": "{{nonNormalizedPath.Replace("\\", "\\\\")}}",
+                "PendingInstallerVersion": "2026.801.5"
+              }
+            }
+            """);
+
+        AppConfig config = store.Load(new Version(2026, 801, 4));
+
+        Assert.Equal(pendingInstallerPath, config.Updates.PendingInstallerPath);
+        Assert.Equal("2026.801.5", config.Updates.PendingInstallerVersion);
     }
 }

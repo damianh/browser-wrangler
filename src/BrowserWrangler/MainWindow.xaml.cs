@@ -21,7 +21,12 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"));
         RestoreWindowBounds();
-        Closed += (_, _) => SaveWindowBounds();
+        Closed += (_, _) =>
+        {
+            SaveWindowBounds();
+            AppState.StopUpdateAutomation();
+        };
+        AppState.EnsureUpdateAutomationStarted();
         Nav.SelectedItem = Nav.MenuItems[0];
         Activated += OnActivated;
     }
@@ -77,12 +82,14 @@ public sealed partial class MainWindow : Window
             return; // keep the last restored bounds
         }
 
-        WindowSettings s = AppState.Config.Window;
-        s.Width = AppWindow.Size.Width;
-        s.Height = AppWindow.Size.Height;
-        s.X = AppWindow.Position.X;
-        s.Y = AppWindow.Position.Y;
-        AppState.Save();
+        AppState.MutateAndSave(config =>
+        {
+            WindowSettings s = config.Window;
+            s.Width = AppWindow.Size.Width;
+            s.Height = AppWindow.Size.Height;
+            s.X = AppWindow.Position.X;
+            s.Y = AppWindow.Position.Y;
+        });
     }
 
     private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)

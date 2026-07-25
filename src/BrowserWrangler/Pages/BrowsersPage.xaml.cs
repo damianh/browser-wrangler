@@ -96,13 +96,11 @@ public sealed partial class BrowsersPage : Page
             ToolTipService.SetToolTip(hide, "Show this browser in pickers and dropdowns");
             hide.Toggled += (_, _) =>
             {
-                browser.IsHidden = !hide.IsOn;
+                AppState.MutateAndSave(_ => browser.IsHidden = !hide.IsOn);
                 foreach (ToggleSwitch t in profileToggles)
                 {
                     t.IsEnabled = hide.IsOn;
                 }
-
-                AppState.Save();
             };
             Grid.SetColumn(hide, 2);
             header.Children.Add(hide);
@@ -155,8 +153,7 @@ public sealed partial class BrowsersPage : Page
                 ToolTipService.SetToolTip(profileHide, "Show this profile in pickers and dropdowns");
                 profileHide.Toggled += (_, _) =>
                 {
-                    profile.IsHidden = !profileHide.IsOn;
-                    AppState.Save();
+                    AppState.MutateAndSave(_ => profile.IsHidden = !profileHide.IsOn);
                 };
                 profileToggles.Add(profileHide);
                 Grid.SetColumn(profileHide, 3);
@@ -191,8 +188,7 @@ public sealed partial class BrowsersPage : Page
 
         if (DefaultProfileCombo.SelectedItem is ComboBoxItem { Tag: string longId })
         {
-            AppState.Config.DefaultProfile = longId;
-            AppState.Save();
+            AppState.MutateAndSave(config => config.DefaultProfile = longId);
         }
     }
 }

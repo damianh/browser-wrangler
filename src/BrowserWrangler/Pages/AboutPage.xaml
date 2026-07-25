@@ -44,6 +44,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,12,0,0" Spacing="8">
                 <Button x:Name="CopyDiagnosticsButton" Content="Copy diagnostics" Click="CopyDiagnostics_Click" />
                 <Button x:Name="CheckUpdatesButton" Content="Check for updates" Click="CheckUpdates_Click" />
+                <Button x:Name="InstallUpdateButton" Content="Install downloaded update" Click="InstallUpdate_Click" Visibility="Collapsed" />
                 <ProgressRing x:Name="UpdateProgress" Width="20" Height="20" IsActive="False" VerticalAlignment="Center" />
             </StackPanel>
             <TextBlock

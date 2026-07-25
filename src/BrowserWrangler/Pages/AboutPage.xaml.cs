@@ -1,6 +1,8 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using BrowserWrangler.Core.Configuration;
 using BrowserWrangler.Core.Updates;
 using BrowserWrangler.Services;
 using Microsoft.UI.Xaml;
@@ -29,7 +31,21 @@ public sealed partial class AboutPage : Page
         CopyrightText.Text = DiagnosticsInfo.Copyright;
         LoadAppIcon();
         BuildAppInfoGrid();
+        Loaded += AboutPage_Loaded;
+        Unloaded += AboutPage_Unloaded;
     }
+
+    private void AboutPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        AppState.Updates.SnapshotChanged += Updates_SnapshotChanged;
+        ApplyUpdateSnapshot();
+    }
+
+    private void AboutPage_Unloaded(object sender, RoutedEventArgs e) =>
+        AppState.Updates.SnapshotChanged -= Updates_SnapshotChanged;
+
+    private void Updates_SnapshotChanged(object? sender, EventArgs e) =>
+        _ = DispatcherQueue.TryEnqueue(ApplyUpdateSnapshot);
 
     private void LoadAppIcon()
     {
@@ -148,23 +164,16 @@ public sealed partial class AboutPage : Page
 
         try
         {
-            using HttpClient client = UpdateChecker.CreateHttpClient(DiagnosticsInfo.AppVersion);
-            var checker = new UpdateChecker(client);
-            UpdateCheckResult result = await checker.CheckAsync(DiagnosticsInfo.AppVersion);
-
-            ShowStatus(result.Message);
-            if (result.ReleaseUrl is { Length: > 0 } releaseUrl && result.Status != UpdateCheckStatus.Failed)
-            {
-                UpdateLink.NavigateUri = new Uri(releaseUrl);
-                UpdateLink.Content = result.Status == UpdateCheckStatus.UpdateAvailable
-                    ? $"Download version {result.LatestVersion}"
-                    : "Open the release page";
-                UpdateLink.Visibility = Visibility.Visible;
-            }
+            _ = await AppState.Updates.CheckNowAsync();
+            ApplyUpdateSnapshot();
+        }
+        catch (OperationCanceledException)
+        {
+            ShowStatus("The update check was canceled.");
         }
         catch (Exception ex)
         {
-            ShowStatus($"The update check failed: {ex.Message}");
+            ShowStatus($"Could not check for updates: {ex.Message}");
         }
         finally
         {
@@ -173,9 +182,125 @@ public sealed partial class AboutPage : Page
         }
     }
 
+    private async void InstallUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetValidPendingInstaller(out string installerPath, out string versionText))
+        {
+            ShowStatus("No downloaded installer is available.");
+            InstallUpdateButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var confirm = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Install update now?",
+            Content = $"Version {versionText} is downloaded. Browser Wrangler will close when you run the installer.",
+            PrimaryButtonText = "Run installer",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await confirm.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            Process? installerProcess = Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+            if (installerProcess is null)
+            {
+                ShowStatus("Could not start installer.");
+                return;
+            }
+
+            ShowStatus($"Started installer for version {versionText}.");
+            App.Current?.Exit();
+        }
+        catch (Win32Exception ex)
+        {
+            ShowStatus($"Could not start installer: {ex.Message}");
+        }
+        catch (FileNotFoundException ex)
+        {
+            ShowStatus($"Installer file was not found: {ex.Message}");
+        }
+    }
+
+    private void ApplyUpdateSnapshot()
+    {
+        UpdateAutomationSnapshot snapshot = AppState.Updates.Snapshot;
+        if (snapshot.StatusMessage.Length > 0)
+        {
+            ShowStatus(snapshot.StatusMessage);
+        }
+
+        UpdateProgress.IsActive = snapshot.IsChecking || snapshot.IsDownloading;
+        InstallUpdateButton.Visibility = TryGetValidPendingInstaller(out _, out _) ? Visibility.Visible : Visibility.Collapsed;
+
+        UpdateCheckResult? result = snapshot.LastCheckResult;
+        if (result is null || result.Status == UpdateCheckStatus.Failed || result.ReleaseUrl is not { Length: > 0 } releaseUrl)
+        {
+            UpdateLink.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        UpdateLink.NavigateUri = new Uri(releaseUrl);
+        UpdateLink.Content = result.Status == UpdateCheckStatus.UpdateAvailable
+            ? $"Open version {result.LatestVersion} release notes"
+            : "Open the release page";
+        UpdateLink.Visibility = Visibility.Visible;
+    }
+
     private void ShowStatus(string message)
     {
         UpdateStatusText.Text = message;
         UpdateStatusText.Visibility = Visibility.Visible;
+    }
+
+    private static bool TryGetValidPendingInstaller(out string installerPath, out string installerVersion)
+    {
+        (string pendingInstallerPath, string pendingInstallerVersion) = AppState.ReadConfig(config =>
+            (config.Updates.PendingInstallerPath, config.Updates.PendingInstallerVersion));
+
+        installerPath = string.Empty;
+        installerVersion = string.Empty;
+        if (pendingInstallerPath.Length == 0 && pendingInstallerVersion.Length == 0)
+        {
+            return false;
+        }
+
+        string normalizedPath = string.Empty;
+        bool valid = pendingInstallerPath.Length > 0
+            && pendingInstallerVersion.Length > 0
+            && ConfigStore.TryNormalizeManagedPendingInstallerPath(pendingInstallerPath, out normalizedPath)
+            && File.Exists(normalizedPath);
+        if (!valid)
+        {
+            TryClearInvalidPendingInstallerMetadata();
+            return false;
+        }
+
+        installerPath = normalizedPath;
+        installerVersion = pendingInstallerVersion;
+        return true;
+    }
+
+    private static void TryClearInvalidPendingInstallerMetadata()
+    {
+        try
+        {
+            AppState.MutateAndSave(config =>
+            {
+                config.Updates.PendingInstallerPath = string.Empty;
+                config.Updates.PendingInstallerVersion = string.Empty;
+            });
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 }
