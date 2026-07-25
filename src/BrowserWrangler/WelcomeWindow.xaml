@@ -1,0 +1,112 @@
+<Window
+    x:Class="BrowserWrangler.WelcomeWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="28" RowSpacing="20" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Spacing="16">
+            <Image
+                x:Name="AppIcon"
+                Width="48"
+                Height="48"
+                VerticalAlignment="Top"
+                Visibility="Collapsed" />
+            <StackPanel Spacing="4">
+                <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Welcome to Browser Wrangler" />
+                <TextBlock
+                    Opacity="0.7"
+                    TextWrapping="Wrap"
+                    Text="Two quick steps and your links will start going to the right browser and profile." />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Spacing="12">
+            <Border
+                Padding="16"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon x:Name="RegisterIcon" VerticalAlignment="Center" Glyph="&#xE73E;" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Registered as a browser" />
+                        <TextBlock
+                            x:Name="RegisterDetail"
+                            FontSize="12"
+                            Opacity="0.7"
+                            TextWrapping="Wrap"
+                            Text="Browser Wrangler now shows up in the Windows list of browsers." />
+                    </StackPanel>
+                    <Button
+                        x:Name="RegisterButton"
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed"
+                        Click="Register_Click"
+                        Content="Register" />
+                </Grid>
+            </Border>
+
+            <Border
+                Padding="16"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon x:Name="DefaultIcon" VerticalAlignment="Center" Glyph="&#xEA39;" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Set as your default browser" />
+                        <TextBlock
+                            x:Name="DefaultDetail"
+                            FontSize="12"
+                            Opacity="0.7"
+                            TextWrapping="Wrap"
+                            Text="Windows only lets you do this yourself. Click the button, then pick Browser Wrangler for HTTP and HTTPS." />
+                    </StackPanel>
+                    <Button
+                        x:Name="DefaultButton"
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Click="OpenDefaultApps_Click"
+                        Content="Open Windows Settings" />
+                </Grid>
+            </Border>
+        </StackPanel>
+
+        <TextBlock
+            Grid.Row="2"
+            VerticalAlignment="Top"
+            FontSize="12"
+            Opacity="0.6"
+            TextWrapping="Wrap"
+            Text="This screen updates itself once Windows reports Browser Wrangler as the default. You can revisit these checks any time on the Health page." />
+
+        <StackPanel
+            Grid.Row="3"
+            HorizontalAlignment="Right"
+            Orientation="Horizontal"
+            Spacing="8">
+            <Button Click="OpenApp_Click" Content="Open Browser Wrangler" />
+            <Button Click="Close_Click" Content="Close" />
+        </StackPanel>
+    </Grid>
+</Window>

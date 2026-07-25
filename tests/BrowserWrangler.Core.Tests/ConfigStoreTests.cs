@@ -85,4 +85,15 @@ public class ConfigStoreTests : IDisposable
 
         Assert.Empty(config.Browsers);
     }
+
+    [Fact]
+    public void Setup_is_incomplete_until_the_first_run_window_marks_it_done()
+    {
+        ConfigStore store = MakeStore();
+        Assert.False(store.Load().SetupCompleted);
+
+        store.Save(new AppConfig { SetupCompleted = true });
+
+        Assert.True(store.Load().SetupCompleted);
+    }
 }

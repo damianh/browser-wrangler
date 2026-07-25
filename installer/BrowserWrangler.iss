@@ -46,7 +46,28 @@ Name: "{userprograms}\Browser Wrangler"; Filename: "{app}\BrowserWrangler.exe"
 [Run]
 ; register as a browser in HKCU so it appears in Default Apps
 Filename: "{app}\BrowserWrangler.exe"; Parameters: "--register"; Flags: runhidden
-Filename: "{app}\BrowserWrangler.exe"; Description: "Open Browser Wrangler"; Flags: nowait postinstall skipifsilent
+; first install: guide the user through making it the default browser (also on silent/winget installs)
+Filename: "{app}\BrowserWrangler.exe"; Parameters: "--first-run"; Flags: nowait runasoriginaluser; Check: IsFirstInstall
+; interactive installs still offer the usual "launch now" checkbox on upgrades
+Filename: "{app}\BrowserWrangler.exe"; Description: "Open Browser Wrangler"; Flags: nowait postinstall skipifsilent; Check: not IsFirstInstall
 
 [UninstallRun]
 Filename: "{app}\BrowserWrangler.exe"; Parameters: "--unregister"; Flags: runhidden; RunOnceId: "UnregisterBrowser"
+
+[Code]
+var
+  FirstInstall: Boolean;
+
+function InitializeSetup(): Boolean;
+begin
+  { no uninstall entry means this is a fresh install rather than an upgrade }
+  FirstInstall := not RegKeyExists(HKEY_CURRENT_USER,
+    'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F398F1B-F8C8-4A30-806E-D0A3FBA8A0D3}_is1');
+  Result := True;
+end;
+
+function IsFirstInstall(): Boolean;
+begin
+  Result := FirstInstall;
+end;
+

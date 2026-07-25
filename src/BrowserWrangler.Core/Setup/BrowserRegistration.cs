@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using BrowserWrangler.Core.Discovery;
 using Microsoft.Win32;
@@ -62,6 +63,7 @@ public static class BrowserRegistration
     {
         RegisterCustomProtocol();
         RegisterBrowser();
+        NotifyShellAssociationsChanged();
     }
 
     public static void UnregisterAll()
@@ -71,6 +73,32 @@ public static class BrowserRegistration
         Registry.CurrentUser.DeleteSubKeyTree(ProgIdRegPath, throwOnMissingSubKey: false);
         using RegistryKey? regApps = Registry.CurrentUser.OpenSubKey(@"Software\RegisteredApplications", writable: true);
         regApps?.DeleteValue(AppInfo.Name, throwOnMissingValue: false);
+        NotifyShellAssociationsChanged();
+    }
+
+    /// <summary>
+    /// Re-registers when the registration is missing or points at a different executable
+    /// (moved install, upgrade, portable copy). Safe to call on the URL-open hot path: it is a
+    /// single registry read in the common case and never throws.
+    /// </summary>
+    /// <returns>True when a repair was performed.</returns>
+    public static bool EnsureRegistered()
+    {
+        try
+        {
+            if (ExecutablePath.Length == 0 || IsRegisteredAsBrowser(out _))
+            {
+                return false;
+            }
+
+            RegisterAll();
+            return true;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        {
+            // registration is best-effort - never break URL routing over it
+            return false;
+        }
     }
 
     /// <summary>Registers under StartMenuInternet with http/https capabilities.</summary>
@@ -129,11 +157,45 @@ public static class BrowserRegistration
         return http && https;
     }
 
-    /// <summary>Opens Windows Settings on the default apps page.</summary>
+    /// <summary>Opens Windows Settings on the default apps page, scrolled to our entry where supported.</summary>
     public static void OpenDefaultAppsSettings()
     {
-        Process.Start(new ProcessStartInfo("ms-settings:defaultapps") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(BuildDefaultAppsUri(Environment.OSVersion.Version.Build))
+        {
+            UseShellExecute = true,
+        });
     }
+
+    /// <summary>
+    /// Builds the ms-settings URI for the Default Apps page. Windows 11 (build 22000+) supports
+    /// deep-linking straight to an app's entry; Windows 10 only has the page itself.
+    /// </summary>
+    public static string BuildDefaultAppsUri(int osBuild)
+    {
+        const string page = "ms-settings:defaultapps";
+        return osBuild >= 22000
+            ? $"{page}?registeredAppUser={Uri.EscapeDataString(AppInfo.Name)}"
+            : page;
+    }
+
+    /// <summary>Tells the shell that file/URL associations changed so Default Apps refreshes.</summary>
+    private static void NotifyShellAssociationsChanged()
+    {
+        try
+        {
+            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+        }
+        catch (DllNotFoundException)
+        {
+            // notification is a nicety; registration itself already succeeded
+        }
+    }
+
+    private const int SHCNE_ASSOCCHANGED = 0x08000000;
+    private const uint SHCNF_IDLIST = 0x0000;
+
+    [DllImport("shell32.dll", SetLastError = false)]
+    private static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);
 
     public static List<SystemCheck> GetChecks() =>
     [

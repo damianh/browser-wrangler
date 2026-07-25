@@ -15,6 +15,7 @@ internal enum LaunchMode
     Config,
     Picker,
     Toast,
+    Welcome,
 }
 
 /// <summary>State handed from Main to the XAML App instance.</summary>
@@ -56,6 +57,14 @@ public static class Program
             return 0;
         }
 
+        // installer hook: post-install setup window
+        bool firstRun = args.Contains("--first-run", StringComparer.OrdinalIgnoreCase);
+        if (firstRun)
+        {
+            Core.Setup.BrowserRegistration.EnsureRegistered();
+            return StartConfigInstance(LaunchMode.Welcome);
+        }
+
         string? url = args.FirstOrDefault(a =>
             a.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
             a.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
@@ -66,7 +75,19 @@ public static class Program
             return HandleUrl(config, url);
         }
 
-        // config UI: single instance
+        // a moved or upgraded install leaves stale registry paths behind - repair them silently
+        Core.Setup.BrowserRegistration.EnsureRegistered();
+
+        // users who never saw the post-install window get it the first time they open the app
+        bool needsSetup = !config.SetupCompleted &&
+            !Core.Setup.BrowserRegistration.IsDefaultBrowser(out _, out _);
+
+        return StartConfigInstance(needsSetup ? LaunchMode.Welcome : LaunchMode.Config);
+    }
+
+    /// <summary>Starts the single-instance UI process, redirecting to an existing instance if any.</summary>
+    private static int StartConfigInstance(LaunchMode mode)
+    {
         AppInstance main = AppInstance.FindOrRegisterForKey("browser-wrangler-config");
         if (!main.IsCurrent)
         {
@@ -75,7 +96,7 @@ public static class Program
             return 0;
         }
 
-        LaunchContext.Mode = LaunchMode.Config;
+        LaunchContext.Mode = mode;
         main.Activated += OnRedirectedActivation;
         StartXamlApp();
         return 0;

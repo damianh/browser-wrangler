@@ -70,6 +70,9 @@ public sealed class AppConfig
 
     public bool LogRuleHits { get; set; }
 
+    /// <summary>Set once the user has been through (or dismissed) the first-run setup window.</summary>
+    public bool SetupCompleted { get; set; }
+
     public PickerSettings Picker { get; set; } = new();
 
     public ToastSettings Toast { get; set; } = new();

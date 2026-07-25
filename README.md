@@ -22,12 +22,16 @@ Or grab the installer / portable zip from the
 [latest release](https://github.com/damianh/browser-wrangler/releases/latest)
 (x64 and ARM64). Installs per-user — no admin required.
 
-After installing, set Browser Wrangler as your default browser in
-**Windows Settings → Apps → Default apps**.
+The installer registers Browser Wrangler as a browser and opens a short setup
+window afterwards. Windows only lets *you* pick the default browser, so that
+window has a button straight to the right page in **Windows Settings** and ticks
+itself off as soon as Windows reports the change. If you close it too early, the
+app shows the same steps the next time you open it, and the **Health** page has
+them permanently.
 
 ## Features
 
-- **Registers as a browser** — per-user registry (no admin), health checks with one-click fixes
+- **Registers as a browser** — per-user registry (no admin), guided first-run setup, health checks with one-click fixes
 - **Browser & profile discovery** — installed browsers, Chromium profiles, Firefox profiles, Firefox Multi-Account Containers, incognito/private entries, with real profile avatars
 - **Rules engine** — substring/regex match on whole URL, domain or path; drag-to-reorder priority; fallback default profile; bt-compatible rule syntax (`scope:domain|priority:2|github.com`)
 - **URL pipeline** — Outlook Safelinks unwrap, optional shortened-link expansion, and find/replace substitutions (`substr|find|replace`, `rgx|find|replace`)
@@ -74,9 +78,10 @@ dotnet build src\BrowserWrangler -p:Platform=x64
 dotnet test tests\BrowserWrangler.Core.Tests
 ```
 
-Run `BrowserWrangler.exe` with no arguments for the config UI; go to the
-**Health** page and click **Register as browser**, then set it as the default
-browser in Windows Settings.
+Run `BrowserWrangler.exe` with no arguments for the config UI; it re-registers
+itself if the exe has moved, and shows the first-run setup window until Browser
+Wrangler is the default browser. `--first-run` forces that window, `--register`
+and `--unregister` are the silent installer hooks.
 
 ## Layout
 
