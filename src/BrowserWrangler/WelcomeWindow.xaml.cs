@@ -1,8 +1,10 @@
+using System.Runtime.InteropServices;
 using BrowserWrangler.Core.Setup;
 using BrowserWrangler.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
 
@@ -14,8 +16,11 @@ namespace BrowserWrangler;
 /// </summary>
 public sealed partial class WelcomeWindow : Window
 {
-    private const int WindowWidth = 620;
-    private const int WindowHeight = 480;
+    private const int WindowWidth = 640;
+    private const int WindowHeight = 560;
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hwnd);
 
     private readonly DispatcherQueueTimer _pollTimer;
 
@@ -23,9 +28,12 @@ public sealed partial class WelcomeWindow : Window
     {
         InitializeComponent();
         Title = "Welcome to Browser Wrangler";
-        ExtendsContentIntoTitleBar = false;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"));
         LoadAppIcon();
+
+        // draw our own title bar so it follows the app theme instead of staying light
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(TitleBarArea);
 
         var presenter = OverlappedPresenter.CreateForDialog();
         presenter.IsResizable = false;
@@ -52,12 +60,19 @@ public sealed partial class WelcomeWindow : Window
 
     private void CenterOnScreen()
     {
+        // AppWindow works in physical pixels, so scale the layout size by the window's DPI
+        IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        uint dpi = GetDpiForWindow(hwnd);
+        double scale = dpi == 0 ? 1.0 : dpi / 96.0;
+        int width = (int)Math.Round(WindowWidth * scale);
+        int height = (int)Math.Round(WindowHeight * scale);
+
         DisplayArea area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary);
         AppWindow.MoveAndResize(new RectInt32(
-            area.WorkArea.X + ((area.WorkArea.Width - WindowWidth) / 2),
-            area.WorkArea.Y + ((area.WorkArea.Height - WindowHeight) / 2),
-            WindowWidth,
-            WindowHeight));
+            area.WorkArea.X + ((area.WorkArea.Width - width) / 2),
+            area.WorkArea.Y + ((area.WorkArea.Height - height) / 2),
+            width,
+            height));
     }
 
     private void LoadAppIcon()
@@ -126,4 +141,10 @@ public sealed partial class WelcomeWindow : Window
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void CloseAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        Close();
+    }
 }
