@@ -135,4 +135,29 @@ jobs:
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-          .\wingetcreate.exe submit --token $env:WINGET_TOKEN "manifests\d\DamianH\BrowserWrangler\$env:VERSION"
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN "manifests\d\DamianH\BrowserWrangler\$env:VERSION" 2>&1 |
+            Tee-Object -Variable output
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # wingetcreate fills the PR body with winget-pkgs' manual checklist
+          # template; replace it with an automated-release note. Best-effort:
+          # the submission already succeeded, so never fail the release here.
+          $match = [regex]::Match(($output -join "`n"), 'https://github\.com/microsoft/winget-pkgs/pull/(\d+)')
+          if (-not $match.Success) {
+            Write-Warning 'Could not find PR URL in wingetcreate output; skipping PR body update.'
+            exit 0
+          }
+          $prNumber = $match.Groups[1].Value
+          $body = @"
+          Automated release of DamianH.BrowserWrangler $env:VERSION.
+
+          - Release: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/v$env:VERSION
+          - Submitted by the [release workflow]($env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID) using wingetcreate.
+          "@
+          $env:GH_TOKEN = $env:WINGET_TOKEN
+          gh api -X PATCH "repos/microsoft/winget-pkgs/pulls/$prNumber" -f body=$body | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Failed to update body of winget-pkgs PR #$prNumber."
+            exit 0
+          }
+          Write-Host "Updated body of winget-pkgs PR #$prNumber."
