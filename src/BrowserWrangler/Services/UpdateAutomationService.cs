@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
+using BrowserWrangler.Core;
 using BrowserWrangler.Core.Configuration;
 using BrowserWrangler.Core.Updates;
 
@@ -20,7 +21,7 @@ public sealed record UpdateAutomationSnapshot
 
 /// <summary>
 /// Background update automation while the config app is open.
-/// Checks stable releases and optionally downloads a trusted installer asset.
+/// Checks releases for the running channel and optionally downloads a trusted installer asset.
 /// </summary>
 public sealed class UpdateAutomationService : IDisposable
 {
@@ -276,7 +277,7 @@ public sealed class UpdateAutomationService : IDisposable
 
         string updatesDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "BrowserWrangler",
+            AppInfo.LocalDataDirectoryName,
             "updates");
         Directory.CreateDirectory(updatesDir);
 

@@ -88,7 +88,7 @@ public static class Program
     /// <summary>Starts the single-instance UI process, redirecting to an existing instance if any.</summary>
     private static int StartConfigInstance(LaunchMode mode)
     {
-        AppInstance main = AppInstance.FindOrRegisterForKey("browser-wrangler-config");
+        AppInstance main = AppInstance.FindOrRegisterForKey(Core.AppInfo.ConfigInstanceKey);
         if (!main.IsCurrent)
         {
             main.RedirectActivationToAsync(AppInstance.GetCurrent().GetActivatedEventArgs())

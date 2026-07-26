@@ -1,7 +1,18 @@
 name: Release
 
 on:
+  push:
+    branches: [dev]
   workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel to publish
+        required: true
+        default: stable
+        type: choice
+        options:
+          - stable
+          - dev
 
 permissions:
   contents: write
@@ -11,11 +22,44 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
+      channel: ${{ steps.v.outputs.channel }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      tag: ${{ steps.v.outputs.tag }}
+      artifact_prefix: ${{ steps.v.outputs.artifact_prefix }}
+      release_title: ${{ steps.v.outputs.release_title }}
     steps:
       # Versioning strategy: YYYY.MDD.buildrun (e.g. 2026.718.42) — month unpadded
-      # so the tag matches the numerically-normalized ProductVersion
+      # so the tag matches the numerically-normalized ProductVersion.
       - id: v
-        run: echo "version=$(date -u +%Y.%-m%d).${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+        shell: bash
+        run: |
+          VERSION="$(date -u +%Y.%-m%d).${GITHUB_RUN_NUMBER}"
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            CHANNEL="dev"
+          else
+            CHANNEL="${{ inputs.channel }}"
+          fi
+
+          if [[ "${CHANNEL}" == "dev" ]]; then
+            PRERELEASE="true"
+            TAG="v${VERSION}-dev"
+            ARTIFACT_PREFIX="BrowserWrangler-dev"
+            RELEASE_TITLE="Browser Wrangler (Dev Channel) ${VERSION}"
+          else
+            PRERELEASE="false"
+            TAG="v${VERSION}"
+            ARTIFACT_PREFIX="BrowserWrangler"
+            RELEASE_TITLE="Browser Wrangler ${VERSION}"
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "channel=${CHANNEL}"
+            echo "prerelease=${PRERELEASE}"
+            echo "tag=${TAG}"
+            echo "artifact_prefix=${ARTIFACT_PREFIX}"
+            echo "release_title=${RELEASE_TITLE}"
+          } >> "$GITHUB_OUTPUT"
 
   build:
     needs: version
@@ -25,7 +69,10 @@ jobs:
         arch: [x64, arm64]
     env:
       VERSION: ${{ needs.version.outputs.version }}
+      CHANNEL: ${{ needs.version.outputs.channel }}
+      ARTIFACT_PREFIX: ${{ needs.version.outputs.artifact_prefix }}
       PLATFORM: ${{ matrix.arch == 'arm64' && 'ARM64' || 'x64' }}
+      ARCH: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v5
 
@@ -45,10 +92,11 @@ jobs:
           -p:PublishReadyToRun=true
           --self-contained
           -p:Version=${{ env.VERSION }}
+          -p:ReleaseChannel=${{ env.CHANNEL }}
           -o publish\${{ matrix.arch }}
 
       - name: Zip (portable)
-        run: Compress-Archive -Path publish\${{ matrix.arch }}\* -DestinationPath BrowserWrangler-${{ env.VERSION }}-${{ matrix.arch }}.zip
+        run: Compress-Archive -Path publish\${{ matrix.arch }}\* -DestinationPath $env:ARTIFACT_PREFIX-$env:VERSION-$env:ARCH.zip
 
       - name: Build installer (Inno Setup, per-user)
         run: >
@@ -56,14 +104,15 @@ jobs:
           /DAppVersion=${{ env.VERSION }}
           /DSourceDir=${{ github.workspace }}\publish\${{ matrix.arch }}
           /DArch=${{ matrix.arch }}
+          /DChannel=${{ env.CHANNEL }}
           installer\BrowserWrangler.iss
 
       - uses: actions/upload-artifact@v6
         with:
           name: packages-${{ matrix.arch }}
           path: |
-            BrowserWrangler-*.zip
-            installer\output\BrowserWrangler-*-setup.exe
+            ${{ env.ARTIFACT_PREFIX }}-*.zip
+            installer\output\${{ env.ARTIFACT_PREFIX }}-*-setup.exe
 
   release:
     needs: [version, build]
@@ -77,84 +126,21 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
+          RELEASE_TITLE: ${{ needs.version.outputs.release_title }}
+          ARTIFACT_PREFIX: ${{ needs.version.outputs.artifact_prefix }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        shell: bash
         run: |
-          find . -name 'BrowserWrangler-*' -exec mv {} . \; 2>/dev/null || true
-          gh release create "v$VERSION" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Browser Wrangler $VERSION" \
+          find . -name "${ARTIFACT_PREFIX}-*" -exec mv {} . \; 2>/dev/null || true
+          EXTRA_FLAGS=()
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            EXTRA_FLAGS+=(--prerelease)
+          fi
+
+          gh release create "${TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${RELEASE_TITLE}" \
             --generate-notes \
-            BrowserWrangler-*.zip BrowserWrangler-*-setup.exe
-
-  winget:
-    needs: [version, release]
-    runs-on: windows-latest
-    env:
-      VERSION: ${{ needs.version.outputs.version }}
-      HAS_WINGET_TOKEN: ${{ secrets.WINGET_TOKEN != '' }}
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: packages-*
-          merge-multiple: true
-
-      - name: Generate winget manifests
-        run: |
-          $x64 = Get-Item "BrowserWrangler-$env:VERSION-x64-setup.exe" -ErrorAction SilentlyContinue
-          if (-not $x64) { $x64 = Get-ChildItem -Recurse -Filter "BrowserWrangler-$env:VERSION-x64-setup.exe" | Select-Object -First 1 }
-          $arm = Get-ChildItem -Recurse -Filter "BrowserWrangler-$env:VERSION-arm64-setup.exe" | Select-Object -First 1
-          $base = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v$env:VERSION"
-          $out = "manifests\d\DamianH\BrowserWrangler\$env:VERSION"
-          New-Item -ItemType Directory -Force $out | Out-Null
-          foreach ($f in Get-ChildItem installer\winget\*.yaml) {
-            (Get-Content $f -Raw) `
-              -replace '\{VERSION\}', $env:VERSION `
-              -replace '\{X64_URL\}', "$base/BrowserWrangler-$env:VERSION-x64-setup.exe" `
-              -replace '\{X64_SHA256\}', (Get-FileHash $x64.FullName -Algorithm SHA256).Hash `
-              -replace '\{ARM64_URL\}', "$base/BrowserWrangler-$env:VERSION-arm64-setup.exe" `
-              -replace '\{ARM64_SHA256\}', (Get-FileHash $arm.FullName -Algorithm SHA256).Hash |
-              Set-Content (Join-Path $out $f.Name) -Encoding utf8
-          }
-          Get-ChildItem $out
-
-      - uses: actions/upload-artifact@v6
-        with:
-          name: winget-manifests
-          path: manifests
-
-      # Submits to microsoft/winget-pkgs when a classic PAT with public_repo
-      # scope is stored in the WINGET_TOKEN secret. Skipped otherwise.
-      - name: Submit to winget-pkgs
-        if: ${{ env.HAS_WINGET_TOKEN == 'true' }}
-        env:
-          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
-        run: |
-          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-          .\wingetcreate.exe submit --token $env:WINGET_TOKEN "manifests\d\DamianH\BrowserWrangler\$env:VERSION" 2>&1 |
-            Tee-Object -Variable output
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-          # wingetcreate fills the PR body with winget-pkgs' manual checklist
-          # template; replace it with an automated-release note. Best-effort:
-          # the submission already succeeded, so never fail the release here.
-          $match = [regex]::Match(($output -join "`n"), 'https://github\.com/microsoft/winget-pkgs/pull/(\d+)')
-          if (-not $match.Success) {
-            Write-Warning 'Could not find PR URL in wingetcreate output; skipping PR body update.'
-            exit 0
-          }
-          $prNumber = $match.Groups[1].Value
-          $body = @"
-          Automated release of DamianH.BrowserWrangler $env:VERSION.
-
-          - Release: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/v$env:VERSION
-          - Submitted by the [release workflow]($env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID) using wingetcreate.
-          "@
-          $env:GH_TOKEN = $env:WINGET_TOKEN
-          gh api -X PATCH "repos/microsoft/winget-pkgs/pulls/$prNumber" -f body=$body | Out-Null
-          if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Failed to update body of winget-pkgs PR #$prNumber."
-            exit 0
-          }
-          Write-Host "Updated body of winget-pkgs PR #$prNumber."
+            "${EXTRA_FLAGS[@]}" \
+            ${ARTIFACT_PREFIX}-*.zip ${ARTIFACT_PREFIX}-*-setup.exe

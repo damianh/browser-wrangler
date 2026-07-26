@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using BrowserWrangler.Core;
 
 namespace BrowserWrangler.Core.Updates;
 
@@ -13,7 +14,8 @@ public sealed class UpdateChecker
     /// <summary>Version stamped into local (non-CI) builds by the csproj default.</summary>
     public static readonly Version DevelopmentVersion = new(1, 0, 0, 0);
 
-    public const string DefaultLatestReleaseApiUrl = "https://api.github.com/repos/damianh/browser-wrangler/releases/latest";
+    public const string DefaultLatestStableReleaseApiUrl = "https://api.github.com/repos/damianh/browser-wrangler/releases/latest";
+    public const string DefaultReleaseListApiUrl = "https://api.github.com/repos/damianh/browser-wrangler/releases?per_page=20";
 
     private const string UnreadableResponse = "GitHub returned a response that could not be understood.";
     private static readonly string[] KnownInstallerArchitectureTokens =
@@ -33,11 +35,14 @@ public sealed class UpdateChecker
 
     private readonly HttpClient _httpClient;
     private readonly string _latestReleaseApiUrl;
+    private readonly bool _allowPrerelease;
 
-    public UpdateChecker(HttpClient httpClient, string? latestReleaseApiUrl = null)
+    public UpdateChecker(HttpClient httpClient, string? latestReleaseApiUrl = null, bool? allowPrerelease = null)
     {
         _httpClient = httpClient;
-        _latestReleaseApiUrl = latestReleaseApiUrl ?? DefaultLatestReleaseApiUrl;
+        _allowPrerelease = allowPrerelease ?? AppInfo.IsDevChannel;
+        _latestReleaseApiUrl = latestReleaseApiUrl
+            ?? (_allowPrerelease ? DefaultReleaseListApiUrl : DefaultLatestStableReleaseApiUrl);
     }
 
     /// <summary>
@@ -89,26 +94,25 @@ public sealed class UpdateChecker
             using JsonDocument document = JsonDocument.Parse(body);
             JsonElement root = document.RootElement;
 
-            // A syntactically valid payload can still have an unexpected shape (an array, a bare
-            // value, or a numeric tag_name), so check the kind before reading anything out.
-            if (root.ValueKind != JsonValueKind.Object || !TryReadString(root, "tag_name", out tag))
+            if (!TrySelectRelease(root, out JsonElement release)
+                || !TryReadString(release, "tag_name", out tag))
             {
                 return UpdateCheckResult.Failed(UnreadableResponse);
             }
 
             // The release page link is optional decoration; a wrong type here should not fail the check.
-            releaseUrl = TryReadString(root, "html_url", out string? url) ? url : null;
-            if (!TryReadBoolean(root, "prerelease", out bool prerelease))
+            releaseUrl = TryReadString(release, "html_url", out string? url) ? url : null;
+            if (!TryReadBoolean(release, "prerelease", out bool prerelease))
             {
                 return UpdateCheckResult.Failed(UnreadableResponse);
             }
 
-            if (prerelease)
+            if (prerelease && !_allowPrerelease)
             {
                 return UpdateCheckResult.Failed("The newest release is marked as a prerelease; only stable releases are supported.");
             }
 
-            installerDownloadUrl = FindTrustedInstallerAssetUrl(root, preferredArchitecture);
+            installerDownloadUrl = FindTrustedInstallerAssetUrl(release, preferredArchitecture);
         }
         catch (JsonException)
         {
@@ -157,6 +161,57 @@ public sealed class UpdateChecker
 
         value = element.GetBoolean();
         return true;
+    }
+
+    private bool TrySelectRelease(JsonElement root, out JsonElement release)
+    {
+        release = default;
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            release = root;
+            return true;
+        }
+
+        if (root.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        JsonElement? fallback = null;
+        foreach (JsonElement candidate in root.EnumerateArray())
+        {
+            if (candidate.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            if (!TryReadBoolean(candidate, "prerelease", out bool prerelease))
+            {
+                continue;
+            }
+
+            if (_allowPrerelease && prerelease)
+            {
+                release = candidate;
+                return true;
+            }
+
+            if (!_allowPrerelease && !prerelease)
+            {
+                release = candidate;
+                return true;
+            }
+
+            fallback ??= candidate;
+        }
+
+        if (fallback is JsonElement selected)
+        {
+            release = selected;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>Validates release asset URLs before any automatic download is attempted.</summary>
@@ -262,6 +317,12 @@ public sealed class UpdateChecker
         if (trimmed.StartsWith('v') || trimmed.StartsWith('V'))
         {
             trimmed = trimmed[1..];
+        }
+
+        int suffixSeparator = trimmed.IndexOfAny(['-', '+']);
+        if (suffixSeparator >= 0)
+        {
+            trimmed = trimmed[..suffixSeparator];
         }
 
         if (!Version.TryParse(trimmed, out Version? parsed))
