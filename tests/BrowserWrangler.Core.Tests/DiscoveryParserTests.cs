@@ -179,6 +179,7 @@ public class DiscoveryParserTests
                 string groupsDir = Path.Combine(dir, "Profile Groups");
                 Directory.CreateDirectory(groupsDir);
                 string dbPath = Path.Combine(groupsDir, "edddb5b7.sqlite");
+                SqliteProviderBootstrap.EnsureInitialized();
                 using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
                 {
                     DataSource = dbPath,
