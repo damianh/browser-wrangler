@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using BrowserWrangler.Core;
 
 namespace BrowserWrangler.Core.Logging;
 
@@ -13,7 +14,7 @@ public sealed class RuleHitLogStore
     public RuleHitLogStore()
         : this(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "BrowserWrangler",
+            AppInfo.LocalDataDirectoryName,
             "rule-hits.jsonl"))
     {
     }

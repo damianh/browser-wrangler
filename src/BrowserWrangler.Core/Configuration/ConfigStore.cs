@@ -1,23 +1,24 @@
 using System.Text.Json;
+using BrowserWrangler.Core;
 using BrowserWrangler.Core.Models;
 
 namespace BrowserWrangler.Core.Configuration;
 
 /// <summary>
 /// Loads and saves <see cref="AppConfig"/> as JSON. Default location:
-/// %LOCALAPPDATA%\BrowserWrangler\config.json.
+/// %LOCALAPPDATA%\{AppInfo.LocalDataDirectoryName}\config.json.
 /// </summary>
 public sealed class ConfigStore
 {
     private static readonly string DefaultManagedUpdatesDirectoryPath = Path.GetFullPath(Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "BrowserWrangler",
+        AppInfo.LocalDataDirectoryName,
         "updates"));
 
     public ConfigStore()
         : this(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "BrowserWrangler",
+            AppInfo.LocalDataDirectoryName,
             "config.json"), DefaultManagedUpdatesDirectoryPath)
     {
     }

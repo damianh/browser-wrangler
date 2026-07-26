@@ -38,8 +38,8 @@ public class UpdateCheckerTests
         }
         """;
 
-    private static UpdateChecker MakeChecker(HttpMessageHandler handler) =>
-        new(new HttpClient(handler), "https://api.example/releases/latest");
+    private static UpdateChecker MakeChecker(HttpMessageHandler handler, bool allowPrerelease = false) =>
+        new(new HttpClient(handler), "https://api.example/releases/latest", allowPrerelease);
 
     [Fact]
     public async Task Reports_update_available_when_release_is_newer()
@@ -222,6 +222,40 @@ public class UpdateCheckerTests
         Assert.Contains("stable", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Supports_prerelease_release_lists_when_prerelease_is_allowed()
+    {
+        UpdateChecker checker = MakeChecker(new StubHandler(Json(
+            """
+            [
+              {
+                "tag_name": "v2026.801.4-dev",
+                "html_url": "https://github.com/damianh/browser-wrangler/releases/tag/v2026.801.4-dev",
+                "prerelease": true,
+                "assets": [
+                  {
+                    "name": "BrowserWrangler-dev-2026.801.4-x64-setup.exe",
+                    "browser_download_url": "https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4-dev/BrowserWrangler-dev-2026.801.4-x64-setup.exe"
+                  }
+                ]
+              },
+              {
+                "tag_name": "v2026.718.10",
+                "html_url": "https://github.com/damianh/browser-wrangler/releases/tag/v2026.718.10",
+                "prerelease": false
+              }
+            ]
+            """)), allowPrerelease: true);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(2026, 718, 10), "x64");
+
+        Assert.Equal(UpdateCheckStatus.UpdateAvailable, result.Status);
+        Assert.Equal(new Version(2026, 801, 4, 0), result.LatestVersion);
+        Assert.Equal(
+            "https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4-dev/BrowserWrangler-dev-2026.801.4-x64-setup.exe",
+            result.InstallerDownloadUrl);
+    }
+
     [Theory]
     [InlineData("https://github.com/damianh/browser-wrangler/releases/download/v2026.801.4/BrowserWrangler-2026.801.4-x64-setup.exe")]
     [InlineData("https://objects.githubusercontent.com/github-production-release-asset-2e65be/123/abc")]
@@ -294,6 +328,9 @@ public class UpdateCheckerTests
     [InlineData("v2026.718.10", 2026, 718, 10)]
     [InlineData("2026.718.10", 2026, 718, 10)]
     [InlineData("V2026.718", 2026, 718, 0)]
+    [InlineData("v2026.718.10-dev", 2026, 718, 10)]
+    [InlineData("v2026.718.10-dev.3", 2026, 718, 10)]
+    [InlineData("v2026.718.10+build5", 2026, 718, 10)]
     [InlineData("  v2026.718.10  ", 2026, 718, 10)]
     public void Parses_supported_release_tag_shapes(string tag, int major, int minor, int build)
     {
