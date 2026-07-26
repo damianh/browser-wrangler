@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using BrowserWrangler.Core.Models;
 
 namespace BrowserWrangler.Core.Configuration;
@@ -10,12 +9,6 @@ namespace BrowserWrangler.Core.Configuration;
 /// </summary>
 public sealed class ConfigStore
 {
-    private static readonly JsonSerializerOptions Options = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
-        Converters = { new JsonStringEnumConverter() },
-    };
     private static readonly string DefaultManagedUpdatesDirectoryPath = Path.GetFullPath(Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "BrowserWrangler",
@@ -50,7 +43,7 @@ public sealed class ConfigStore
             try
             {
                 using FileStream stream = File.OpenRead(ConfigFilePath);
-                config = JsonSerializer.Deserialize<AppConfig>(stream, Options) ?? new AppConfig();
+                config = JsonSerializer.Deserialize(stream, AppConfigJsonContext.Default.AppConfig) ?? new AppConfig();
             }
             catch (JsonException)
             {
@@ -75,7 +68,7 @@ public sealed class ConfigStore
         string tmp = ConfigFilePath + ".tmp";
         using (FileStream stream = File.Create(tmp))
         {
-            JsonSerializer.Serialize(stream, config, Options);
+            JsonSerializer.Serialize(stream, config, AppConfigJsonContext.Default.AppConfig);
         }
 
         File.Move(tmp, ConfigFilePath, overwrite: true);
