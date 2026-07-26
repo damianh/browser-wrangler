@@ -12,6 +12,7 @@ public static class BrowserMerger
     public static List<Browser> Merge(List<Browser> discovered, List<Browser> saved)
     {
         var result = new List<Browser>();
+        int maxSavedOrder = saved.Count > 0 ? saved.Max(b => b.SortOrder) : -1;
 
         foreach (Browser fresh in discovered)
         {
@@ -23,16 +24,22 @@ public static class BrowserMerger
 
                 foreach (BrowserProfile freshProfile in fresh.Profiles)
                 {
+                    // Profile order always follows fresh discovery (profile, then its
+                    // containers, incognito last); only user data is carried over.
                     BrowserProfile? oldProfile = old.Profiles.FirstOrDefault(p => p.Id == freshProfile.Id);
                     if (oldProfile is not null)
                     {
                         freshProfile.Rules = oldProfile.Rules;
                         freshProfile.IsHidden = oldProfile.IsHidden;
-                        freshProfile.SortOrder = oldProfile.SortOrder;
                         freshProfile.UserArg = oldProfile.UserArg;
                         freshProfile.UserIconPath = oldProfile.UserIconPath;
                     }
                 }
+            }
+            else
+            {
+                // new browsers go to the end instead of jumping in front of user-ordered ones
+                fresh.SortOrder = ++maxSavedOrder;
             }
 
             result.Add(fresh);
@@ -51,13 +58,28 @@ public static class BrowserMerger
         return result;
     }
 
-    /// <summary>Sorts browsers and their profiles by sort order (stable).</summary>
+    /// <summary>
+    /// Sorts browsers and their profiles by sort order (stable) and normalizes
+    /// the persisted sort orders to sequential indices.
+    /// </summary>
     public static void Sort(List<Browser> browsers)
     {
-        browsers.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
-        foreach (Browser browser in browsers)
+        List<Browser> orderedBrowsers = [.. browsers.OrderBy(b => b.SortOrder)];
+        browsers.Clear();
+        browsers.AddRange(orderedBrowsers);
+
+        for (int i = 0; i < browsers.Count; i++)
         {
-            browser.Profiles.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
+            Browser browser = browsers[i];
+            browser.SortOrder = i;
+
+            List<BrowserProfile> orderedProfiles = [.. browser.Profiles.OrderBy(p => p.SortOrder)];
+            browser.Profiles.Clear();
+            browser.Profiles.AddRange(orderedProfiles);
+            for (int j = 0; j < browser.Profiles.Count; j++)
+            {
+                browser.Profiles[j].SortOrder = j;
+            }
         }
     }
 }
