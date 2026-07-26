@@ -1,6 +1,9 @@
+using System.Diagnostics;
+using System.Security;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using BrowserWrangler.Services;
+using Microsoft.Data.Sqlite;
 
 namespace BrowserWrangler;
 
@@ -27,7 +30,26 @@ public partial class App : Application
 
         if (LaunchContext.Mode is LaunchMode.Config or LaunchMode.Welcome)
         {
-            AppState.RefreshBrowsers();
+            try
+            {
+                AppState.RefreshBrowsers();
+            }
+            catch (IOException ex)
+            {
+                Trace.TraceWarning($"Startup browser refresh failed (I/O): {ex}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Trace.TraceWarning($"Startup browser refresh failed (access denied): {ex}");
+            }
+            catch (SecurityException ex)
+            {
+                Trace.TraceWarning($"Startup browser refresh failed (security): {ex}");
+            }
+            catch (SqliteException ex)
+            {
+                Trace.TraceWarning($"Startup browser refresh failed (SQLite): {ex}");
+            }
         }
 
         switch (LaunchContext.Mode)
