@@ -14,6 +14,7 @@ public static class IconLoader
     private const uint FILE_ATTRIBUTE_NORMAL = 0x00000080;
     private const uint BI_RGB = 0;
     private const uint DIB_RGB_COLORS = 0;
+    private const uint DI_NORMAL = 0x0003;
 
     private static readonly Dictionary<string, ImageSource?> Cache = new(StringComparer.OrdinalIgnoreCase);
 
@@ -100,15 +101,20 @@ public static class IconLoader
 
         try
         {
-            nint hBitmap = iconInfo.hbmColor != nint.Zero ? iconInfo.hbmColor : iconInfo.hbmMask;
-            if (hBitmap == nint.Zero ||
-                GetObject(hBitmap, Marshal.SizeOf<BITMAP>(), out BITMAP bitmap) == 0)
+            nint sizeBitmap = iconInfo.hbmColor != nint.Zero ? iconInfo.hbmColor : iconInfo.hbmMask;
+            if (sizeBitmap == nint.Zero ||
+                GetObject(sizeBitmap, Marshal.SizeOf<BITMAP>(), out BITMAP bitmap) == 0)
             {
                 return null;
             }
 
             int width = bitmap.bmWidth;
             int height = Math.Abs(bitmap.bmHeight);
+            if (iconInfo.hbmColor == nint.Zero)
+            {
+                height /= 2; // monochrome masks store AND/XOR planes stacked vertically
+            }
+
             if (width <= 0 || height <= 0)
             {
                 return null;
@@ -127,16 +133,23 @@ public static class IconLoader
                 },
             };
 
-            byte[] pixels = new byte[width * height * 4];
             nint dc = CreateCompatibleDC(nint.Zero);
             if (dc == nint.Zero)
             {
                 return null;
             }
 
+            nint dibBits = nint.Zero;
+            nint dib = nint.Zero;
             try
             {
-                nint oldObject = SelectObject(dc, hBitmap);
+                dib = CreateDIBSection(dc, ref bmi, DIB_RGB_COLORS, out dibBits, nint.Zero, 0);
+                if (dib == nint.Zero || dibBits == nint.Zero)
+                {
+                    return null;
+                }
+
+                nint oldObject = SelectObject(dc, dib);
                 if (oldObject == nint.Zero)
                 {
                     return null;
@@ -144,11 +157,18 @@ public static class IconLoader
 
                 try
                 {
-                    int copied = GetDIBits(dc, hBitmap, 0, (uint)height, pixels, ref bmi, DIB_RGB_COLORS);
-                    if (copied == 0)
+                    if (!DrawIconEx(dc, 0, 0, hIcon, width, height, 0, nint.Zero, DI_NORMAL))
                     {
                         return null;
                     }
+
+                    byte[] pixels = new byte[width * height * 4];
+                    Marshal.Copy(dibBits, pixels, 0, pixels.Length);
+
+                    var wb = new WriteableBitmap(width, height);
+                    using Stream pixelStream = wb.PixelBuffer.AsStream();
+                    pixelStream.Write(pixels, 0, pixels.Length);
+                    return wb;
                 }
                 finally
                 {
@@ -157,13 +177,13 @@ public static class IconLoader
             }
             finally
             {
+                if (dib != nint.Zero)
+                {
+                    _ = DeleteObject(dib);
+                }
+
                 _ = DeleteDC(dc);
             }
-
-            var wb = new WriteableBitmap(width, height);
-            using Stream pixelStream = wb.PixelBuffer.AsStream();
-            pixelStream.Write(pixels, 0, pixels.Length);
-            return wb;
         }
         finally
         {
@@ -214,14 +234,25 @@ public static class IconLoader
     private static extern nint SelectObject(nint hdc, nint h);
 
     [DllImport("gdi32.dll", SetLastError = true)]
-    private static extern int GetDIBits(
+    private static extern nint CreateDIBSection(
         nint hdc,
-        nint hbm,
-        uint start,
-        uint cLines,
-        [Out] byte[] lpvBits,
-        ref BITMAPINFO lpbmi,
-        uint usage);
+        ref BITMAPINFO pbmi,
+        uint iUsage,
+        out nint ppvBits,
+        nint hSection,
+        uint dwOffset);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DrawIconEx(
+        nint hdc,
+        int xLeft,
+        int yTop,
+        nint hIcon,
+        int cxWidth,
+        int cyWidth,
+        uint istepIfAniCur,
+        nint hbrFlickerFreeDraw,
+        uint diFlags);
 
     [DllImport("gdi32.dll", SetLastError = true)]
     private static extern int GetObject(nint h, int c, out BITMAP pv);
