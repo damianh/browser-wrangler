@@ -32,6 +32,7 @@
             AllowDrop="True"
             CanDragItems="True"
             CanReorderItems="True"
+            ReorderMode="Enabled"
             DragItemsCompleted="BrowserList_DragItemsCompleted">
             <ListView.ItemTemplate>
                 <DataTemplate>

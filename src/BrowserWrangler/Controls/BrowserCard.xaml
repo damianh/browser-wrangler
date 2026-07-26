@@ -3,9 +3,22 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     DataContextChanged="OnDataContextChanged">
-    <Expander
-        x:Name="Card"
-        HorizontalAlignment="Stretch"
-        HorizontalContentAlignment="Stretch"
-        IsExpanded="False" />
+    <Grid ColumnSpacing="8">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <FontIcon
+            FontSize="14"
+            Glyph="&#xE76F;"
+            Opacity="0.5"
+            ToolTipService.ToolTip="Drag to reorder browsers"
+            VerticalAlignment="Center" />
+        <Expander
+            x:Name="Card"
+            Grid.Column="1"
+            HorizontalAlignment="Stretch"
+            HorizontalContentAlignment="Stretch"
+            IsExpanded="False" />
+    </Grid>
 </UserControl>
