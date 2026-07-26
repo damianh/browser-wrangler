@@ -54,25 +54,41 @@
         <h2>Screenshots</h2>
         <div class="gallery">
           <figure>
-            <img src="img/browsers.png" alt="Browser Wrangler browsers page">
+            <a href="img/browsers.png" data-lightbox data-caption="Browsers">
+              <img src="img/browsers.png" alt="Browser Wrangler browsers page">
+            </a>
             <figcaption>Browsers</figcaption>
           </figure>
           <figure>
-            <img src="img/browsers-profiles.png" alt="Browser Wrangler browsers page with profiles expanded">
+            <a href="img/browsers-profiles.png" data-lightbox data-caption="Profiles &amp; containers">
+              <img src="img/browsers-profiles.png" alt="Browser Wrangler browsers page with profiles expanded">
+            </a>
             <figcaption>Profiles &amp; containers</figcaption>
           </figure>
           <figure>
-            <img src="img/rules.png" alt="Browser Wrangler rules page">
+            <a href="img/rules.png" data-lightbox data-caption="Rules">
+              <img src="img/rules.png" alt="Browser Wrangler rules page">
+            </a>
             <figcaption>Rules</figcaption>
           </figure>
           <figure>
-            <img src="img/picker.png" alt="Browser Wrangler picker popup">
+            <a href="img/picker.png" data-lightbox data-caption="Picker">
+              <img src="img/picker.png" alt="Browser Wrangler picker popup">
+            </a>
             <figcaption>Picker</figcaption>
           </figure>
         </div>
       </div>
     </section>
   </main>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lightbox-close" id="lightbox-close" aria-label="Close image preview">&times;</button>
+    <figure class="lightbox-figure">
+      <img id="lightbox-image" alt="">
+      <figcaption id="lightbox-caption"></figcaption>
+    </figure>
+  </div>
 
   <footer class="site-footer">
     <div class="container">
@@ -82,5 +98,56 @@
       </p>
     </div>
   </footer>
+
+  <script>
+    (() => {
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImage = document.getElementById("lightbox-image");
+      const lightboxCaption = document.getElementById("lightbox-caption");
+      const closeButton = document.getElementById("lightbox-close");
+      const links = document.querySelectorAll("[data-lightbox]");
+
+      if (!lightbox || !lightboxImage || !lightboxCaption || !closeButton || links.length === 0) {
+        return;
+      }
+
+      const open = (src, alt, caption) => {
+        lightboxImage.src = src;
+        lightboxImage.alt = alt || "";
+        lightboxCaption.textContent = caption || "";
+        lightbox.hidden = false;
+        document.body.classList.add("lightbox-open");
+      };
+
+      const close = () => {
+        lightbox.hidden = true;
+        lightboxImage.src = "";
+        lightboxCaption.textContent = "";
+        document.body.classList.remove("lightbox-open");
+      };
+
+      links.forEach((link) => {
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          const image = link.querySelector("img");
+          open(link.getAttribute("href"), image ? image.getAttribute("alt") : "", link.getAttribute("data-caption"));
+        });
+      });
+
+      closeButton.addEventListener("click", close);
+
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox) {
+          close();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !lightbox.hidden) {
+          close();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
