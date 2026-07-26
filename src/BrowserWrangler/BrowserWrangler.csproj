@@ -12,7 +12,7 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <!-- Trim unused framework/SDK code on publish; JSON uses source-generated
-         contexts and XAML uses x:Bind, so reflection-based trimming hazards are avoided.
+         contexts and the UI avoids reflection-based XAML bindings by populating views in code-behind.
          Partial mode processes only assemblies that explicitly opt in to trimming;
          dependencies that are not trim-compatible are copied intact. -->
     <PublishTrimmed>true</PublishTrimmed>
