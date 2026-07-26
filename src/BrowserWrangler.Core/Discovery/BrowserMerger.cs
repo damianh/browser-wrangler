@@ -12,7 +12,11 @@ public static class BrowserMerger
     public static List<Browser> Merge(List<Browser> discovered, List<Browser> saved)
     {
         var result = new List<Browser>();
-        int maxSavedOrder = saved.Count > 0 ? saved.Max(b => b.SortOrder) : -1;
+        Dictionary<Browser, int> savedOrderRanks = saved
+            .OrderBy(b => b.SortOrder)
+            .Select((browser, index) => new { browser, index })
+            .ToDictionary(item => item.browser, item => item.index);
+        int maxSavedOrder = savedOrderRanks.Count - 1;
 
         foreach (Browser fresh in discovered)
         {
@@ -20,7 +24,7 @@ public static class BrowserMerger
             if (old is not null)
             {
                 fresh.IsHidden = old.IsHidden;
-                fresh.SortOrder = old.SortOrder;
+                fresh.SortOrder = savedOrderRanks[old];
 
                 foreach (BrowserProfile freshProfile in fresh.Profiles)
                 {
@@ -50,6 +54,7 @@ public static class BrowserMerger
         {
             if (!result.Any(b => b.OpenCommand == old.OpenCommand))
             {
+                old.SortOrder = savedOrderRanks[old];
                 result.Add(old);
             }
         }

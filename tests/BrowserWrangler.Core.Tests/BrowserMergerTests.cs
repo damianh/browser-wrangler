@@ -64,6 +64,22 @@ public class BrowserMergerTests
     }
 
     [Fact]
+    public void Merge_preserves_saved_browser_order_when_sort_orders_are_tied()
+    {
+        var oldFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true, SortOrder = 0 };
+        var custom = new Browser("custom", "My Browser", @"C:\my.exe") { IsAutoDiscovered = false, SortOrder = 0 };
+        var oldEdge = new Browser("edge", "Edge", @"C:\msedge.exe") { IsAutoDiscovered = true, SortOrder = 0 };
+
+        var newEdge = new Browser("edge", "Edge", @"C:\msedge.exe") { IsAutoDiscovered = true };
+        var newFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true };
+
+        var merged = BrowserMerger.Merge([newEdge, newFirefox], [oldFirefox, custom, oldEdge]);
+
+        Assert.Equal(["firefox", "custom", "edge"], merged.Select(b => b.Id));
+        Assert.Equal([0, 1, 2], merged.Select(b => b.SortOrder));
+    }
+
+    [Fact]
     public void Merge_appends_newly_discovered_browsers_after_existing_ones()
     {
         var oldFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true, SortOrder = 1 };
