@@ -46,9 +46,13 @@ them permanently.
 
 ### Browsers
 
-Toggle which browsers and profiles appear in the picker.
+Toggle which browsers appear in the picker, and drag to reorder them.
 
 ![Browsers page](docs/img/browsers.png)
+
+Expand a browser to toggle its profiles, containers and private/incognito entries.
+
+![Browsers page with profiles expanded](docs/img/browsers-profiles.png)
 
 ### Rules
 
