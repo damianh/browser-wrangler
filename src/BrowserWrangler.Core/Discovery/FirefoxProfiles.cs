@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using BrowserWrangler.Core.Models;
 using Microsoft.Data.Sqlite;
+using SQLitePCL;
 
 namespace BrowserWrangler.Core.Discovery;
 
@@ -23,6 +24,9 @@ public sealed record FirefoxContainerInfo(string Id, string Name);
 /// </summary>
 public static class FirefoxProfiles
 {
+    private static readonly object SqliteProviderLock = new();
+    private static bool _sqliteProviderInitialized;
+
     /// <summary>Parses Firefox profiles from profiles.ini content.</summary>
     public static List<FirefoxProfileInfo> ParseProfilesIni(string iniContent)
     {
@@ -296,6 +300,8 @@ public static class FirefoxProfiles
 
     private static IEnumerable<FirefoxStoreProfileInfo> ReadStoreProfiles(string dataPath, string storeId)
     {
+        EnsureSqliteProviderInitialized();
+
         string storePath = Path.Combine(dataPath, "Profile Groups", $"{storeId}.sqlite");
         if (!File.Exists(storePath))
         {
@@ -328,6 +334,26 @@ public static class FirefoxProfiles
             }
 
             yield return new FirefoxStoreProfileInfo(path, name);
+        }
+    }
+
+    private static void EnsureSqliteProviderInitialized()
+    {
+        if (_sqliteProviderInitialized)
+        {
+            return;
+        }
+
+        lock (SqliteProviderLock)
+        {
+            if (_sqliteProviderInitialized)
+            {
+                return;
+            }
+
+            raw.SetProvider(new SQLite3Provider_winsqlite3());
+            raw.FreezeProvider();
+            _sqliteProviderInitialized = true;
         }
     }
 

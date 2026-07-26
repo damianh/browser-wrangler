@@ -37,12 +37,12 @@ jobs:
         if: matrix.arch == 'x64'
         run: dotnet test tests\BrowserWrangler.Core.Tests -c Release
 
-      - name: Publish (self-contained, trimmed, ReadyToRun)
+      - name: Publish (self-contained, Native AOT)
         run: >
           dotnet publish src\BrowserWrangler -c Release
           -r win-${{ matrix.arch }}
           -p:Platform=${{ env.PLATFORM }}
-          -p:PublishReadyToRun=true
+          -p:PublishAot=true
           --self-contained
           -p:Version=${{ env.VERSION }}
           -o publish\${{ matrix.arch }}

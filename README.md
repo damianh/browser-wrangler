@@ -39,7 +39,7 @@ them permanently.
 - **URL pipeline** — Outlook Safelinks unwrap, optional shortened-link expansion, and find/replace substitutions (`substr|find|replace`, `rgx|find|replace`)
 - **Picker** — popup listing browsers/profiles with number-key shortcuts; triggered by hotkeys (Ctrl+Shift etc.), rule conflicts, or no-match
 - **Toast** — brief notification showing which rule routed to which browser
-- **Fast cold-start** — URL invocations route and launch without initializing XAML unless UI is needed; ReadyToRun-compiled releases
+- **Fast cold-start** — URL invocations route and launch without initializing XAML unless UI is needed; Native AOT-compiled releases
 - **No background process** — runs on demand per click, exits when done
 
 ## Screenshots
