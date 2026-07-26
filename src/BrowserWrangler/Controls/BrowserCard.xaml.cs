@@ -11,11 +11,28 @@ namespace BrowserWrangler.Controls;
 /// </summary>
 public sealed partial class BrowserCard : UserControl
 {
+    /// <summary>Browser ids expanded by the user; remembered for the app session.</summary>
+    private static readonly HashSet<string> ExpandedBrowserIds = [];
+
     private Browser? _browser;
 
     public BrowserCard()
     {
         InitializeComponent();
+        Card.Expanding += (_, _) =>
+        {
+            if (_browser is not null)
+            {
+                ExpandedBrowserIds.Add(_browser.Id);
+            }
+        };
+        Card.Collapsed += (_, _) =>
+        {
+            if (_browser is not null)
+            {
+                ExpandedBrowserIds.Remove(_browser.Id);
+            }
+        };
     }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
@@ -26,6 +43,7 @@ public sealed partial class BrowserCard : UserControl
         }
 
         _browser = browser;
+        Card.IsExpanded = ExpandedBrowserIds.Contains(browser.Id);
         Build(browser);
     }
 
