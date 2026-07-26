@@ -1,7 +1,8 @@
 <Page
     x:Class="BrowserWrangler.Pages.BrowsersPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BrowserWrangler.Controls">
     <Grid Padding="24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -21,8 +22,30 @@
             <TextBlock VerticalAlignment="Center" Text="Default profile:" />
             <ComboBox x:Name="DefaultProfileCombo" MinWidth="260" SelectionChanged="DefaultProfile_Changed" />
         </StackPanel>
-        <ScrollViewer Grid.Row="2" Padding="0,0,16,0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel x:Name="BrowserList" HorizontalAlignment="Left" MaxWidth="640" MinWidth="560" Spacing="8" />
-        </ScrollViewer>
+        <ListView
+            x:Name="BrowserList"
+            Grid.Row="2"
+            HorizontalAlignment="Left"
+            MaxWidth="640"
+            MinWidth="560"
+            SelectionMode="None"
+            AllowDrop="True"
+            CanDragItems="True"
+            CanReorderItems="True"
+            ReorderMode="Enabled"
+            DragItemsCompleted="BrowserList_DragItemsCompleted">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <controls:BrowserCard />
+                </DataTemplate>
+            </ListView.ItemTemplate>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,0,0,8" />
+                </Style>
+            </ListView.ItemContainerStyle>
+        </ListView>
     </Grid>
 </Page>

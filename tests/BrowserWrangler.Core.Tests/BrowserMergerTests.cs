@@ -25,7 +25,6 @@ public class BrowserMergerTests
 
         Assert.Single(merged);
         Assert.True(merged[0].IsHidden);
-        Assert.Equal(5, merged[0].SortOrder);
         BrowserProfile def = merged[0].Profiles.Single(p => p.Id == "Default");
         Assert.Single(def.Rules);
         Assert.Equal("--dark", def.UserArg);
@@ -47,5 +46,85 @@ public class BrowserMergerTests
         Assert.Contains(merged, b => b.Id == "edge");
         Assert.Contains(merged, b => b.Id == "custom");
         Assert.DoesNotContain(merged, b => b.Id == "gone");
+    }
+
+    [Fact]
+    public void Merge_preserves_relative_browser_order_and_normalizes_indices()
+    {
+        var oldFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true, SortOrder = 3 };
+        var oldEdge = new Browser("edge", "Edge", @"C:\msedge.exe") { IsAutoDiscovered = true, SortOrder = 7 };
+
+        var newEdge = new Browser("edge", "Edge", @"C:\msedge.exe") { IsAutoDiscovered = true };
+        var newFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true };
+
+        var merged = BrowserMerger.Merge([newEdge, newFirefox], [oldFirefox, oldEdge]);
+
+        Assert.Equal(["firefox", "edge"], merged.Select(b => b.Id));
+        Assert.Equal([0, 1], merged.Select(b => b.SortOrder));
+    }
+
+    [Fact]
+    public void Merge_preserves_saved_browser_order_when_sort_orders_are_tied()
+    {
+        var oldFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true, SortOrder = 0 };
+        var custom = new Browser("custom", "My Browser", @"C:\my.exe") { IsAutoDiscovered = false, SortOrder = 0 };
+        var oldEdge = new Browser("edge", "Edge", @"C:\msedge.exe") { IsAutoDiscovered = true, SortOrder = 0 };
+
+        var newEdge = new Browser("edge", "Edge", @"C:\msedge.exe") { IsAutoDiscovered = true };
+        var newFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true };
+
+        var merged = BrowserMerger.Merge([newEdge, newFirefox], [oldFirefox, custom, oldEdge]);
+
+        Assert.Equal(["firefox", "custom", "edge"], merged.Select(b => b.Id));
+        Assert.Equal([0, 1, 2], merged.Select(b => b.SortOrder));
+    }
+
+    [Fact]
+    public void Merge_appends_newly_discovered_browsers_after_existing_ones()
+    {
+        var oldFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true, SortOrder = 1 };
+        var oldEdge = new Browser("edge", "Edge", @"C:\msedge.exe") { IsAutoDiscovered = true, SortOrder = 0 };
+
+        var brandNew = new Browser("zen", "Zen", @"C:\zen.exe") { IsAutoDiscovered = true };
+        var newFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true };
+        var newEdge = new Browser("edge", "Edge", @"C:\msedge.exe") { IsAutoDiscovered = true };
+
+        var merged = BrowserMerger.Merge([brandNew, newFirefox, newEdge], [oldFirefox, oldEdge]);
+
+        Assert.Equal(["edge", "firefox", "zen"], merged.Select(b => b.Id));
+    }
+
+    [Fact]
+    public void Merge_profile_order_follows_fresh_discovery_not_saved_order()
+    {
+        var oldFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true };
+        oldFirefox.Profiles.Add(new BrowserProfile(oldFirefox, "private", "Private") { IsIncognito = true, SortOrder = 0 });
+        oldFirefox.Profiles.Add(new BrowserProfile(oldFirefox, "Profile0+c_1", "Personal :: Work") { SortOrder = 1 });
+        oldFirefox.Profiles.Add(new BrowserProfile(oldFirefox, "Profile0", "Personal") { SortOrder = 2 });
+
+        // fresh discovery: profile, then its containers, incognito last
+        var newFirefox = new Browser("firefox", "Firefox", @"C:\firefox.exe") { IsAutoDiscovered = true };
+        newFirefox.Profiles.Add(new BrowserProfile(newFirefox, "Profile0", "Personal") { SortOrder = 0 });
+        newFirefox.Profiles.Add(new BrowserProfile(newFirefox, "Profile0+c_1", "Personal :: Work") { SortOrder = 1 });
+        newFirefox.Profiles.Add(new BrowserProfile(newFirefox, "private", "Private") { IsIncognito = true, SortOrder = 2 });
+
+        var merged = BrowserMerger.Merge([newFirefox], [oldFirefox]);
+
+        Assert.Equal(
+            ["Profile0", "Profile0+c_1", "private"],
+            merged[0].Profiles.Select(p => p.Id));
+        Assert.Equal([0, 1, 2], merged[0].Profiles.Select(p => p.SortOrder));
+    }
+
+    [Fact]
+    public void Merge_keeps_custom_browser_profile_order()
+    {
+        var custom = new Browser("custom", "My Browser", @"C:\my.exe") { IsAutoDiscovered = false };
+        custom.Profiles.Add(new BrowserProfile(custom, "b", "Second") { SortOrder = 1 });
+        custom.Profiles.Add(new BrowserProfile(custom, "a", "First") { SortOrder = 0 });
+
+        var merged = BrowserMerger.Merge([], [custom]);
+
+        Assert.Equal(["a", "b"], merged.Single().Profiles.Select(p => p.Id));
     }
 }
