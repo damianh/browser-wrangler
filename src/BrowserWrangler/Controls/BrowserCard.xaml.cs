@@ -11,8 +11,9 @@ namespace BrowserWrangler.Controls;
 /// </summary>
 public sealed partial class BrowserCard : UserControl
 {
-    /// <summary>Browser ids expanded by the user; remembered for the app session.</summary>
-    private static readonly HashSet<string> ExpandedBrowserIds = [];
+    /// <summary>Id of the single expanded browser (accordion); remembered for the app session.</summary>
+    private static string? _expandedBrowserId;
+    private static event Action? ExpandedBrowserChanged;
 
     private Browser? _browser;
 
@@ -21,18 +22,34 @@ public sealed partial class BrowserCard : UserControl
         InitializeComponent();
         Card.Expanding += (_, _) =>
         {
-            if (_browser is not null)
+            if (_browser is not null && _expandedBrowserId != _browser.Id)
             {
-                ExpandedBrowserIds.Add(_browser.Id);
+                _expandedBrowserId = _browser.Id;
+                ExpandedBrowserChanged?.Invoke();
             }
         };
         Card.Collapsed += (_, _) =>
         {
-            if (_browser is not null)
+            if (_browser is not null && _expandedBrowserId == _browser.Id)
             {
-                ExpandedBrowserIds.Remove(_browser.Id);
+                _expandedBrowserId = null;
             }
         };
+        Loaded += (_, _) =>
+        {
+            ExpandedBrowserChanged += SyncExpansion;
+            SyncExpansion();
+        };
+        Unloaded += (_, _) => ExpandedBrowserChanged -= SyncExpansion;
+    }
+
+    /// <summary>Collapses this card when another browser is the expanded one.</summary>
+    private void SyncExpansion()
+    {
+        if (_browser is not null)
+        {
+            Card.IsExpanded = _browser.Id == _expandedBrowserId;
+        }
     }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
@@ -43,7 +60,7 @@ public sealed partial class BrowserCard : UserControl
         }
 
         _browser = browser;
-        Card.IsExpanded = ExpandedBrowserIds.Contains(browser.Id);
+        SyncExpansion();
         Build(browser);
     }
 
