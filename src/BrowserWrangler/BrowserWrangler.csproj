@@ -11,6 +11,9 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <!-- Trim unused framework/SDK code on publish; JSON uses source-generated
+         contexts and XAML uses x:Bind, so reflection-based trimming hazards are avoided. -->
+    <PublishTrimmed>true</PublishTrimmed>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Nullable>enable</Nullable>

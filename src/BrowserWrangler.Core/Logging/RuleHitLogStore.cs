@@ -10,11 +10,6 @@ public sealed class RuleHitLogStore
 {
     public const int MaxRetainedEntries = 500;
 
-    private static readonly JsonSerializerOptions Options = new()
-    {
-        WriteIndented = false,
-    };
-
     public RuleHitLogStore()
         : this(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -35,7 +30,7 @@ public sealed class RuleHitLogStore
             Directory.CreateDirectory(dir);
         }
 
-        string line = JsonSerializer.Serialize(entry, Options);
+        string line = JsonSerializer.Serialize(entry, RuleHitLogJsonContext.Default.RuleHitLogEntry);
         byte[] payload = Encoding.UTF8.GetBytes(line + Environment.NewLine);
         using (var stream = new FileStream(LogFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
         {
@@ -64,7 +59,7 @@ public sealed class RuleHitLogStore
 
             try
             {
-                RuleHitLogEntry? entry = JsonSerializer.Deserialize<RuleHitLogEntry>(line, Options);
+                RuleHitLogEntry? entry = JsonSerializer.Deserialize(line, RuleHitLogJsonContext.Default.RuleHitLogEntry);
                 if (entry is not null)
                 {
                     latestWindow.Enqueue(entry);
