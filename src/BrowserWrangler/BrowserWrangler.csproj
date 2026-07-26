@@ -11,12 +11,9 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <!-- Trim unused framework/SDK code on publish; JSON uses source-generated
-         contexts and the UI avoids reflection-based XAML bindings by populating views in code-behind.
-         Partial mode processes only assemblies that explicitly opt in to trimming;
-         dependencies that are not trim-compatible are copied intact. -->
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
+    <IsAotCompatible>true</IsAotCompatible>
+    <PublishAot>true</PublishAot>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <ReleaseChannel Condition="'$(ReleaseChannel)' == ''">stable</ReleaseChannel>
     <DefineConstants Condition="'$(ReleaseChannel)' == 'dev'">$(DefineConstants);DEV_CHANNEL</DefineConstants>
@@ -37,7 +34,6 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4188" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="System.Drawing.Common" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup>

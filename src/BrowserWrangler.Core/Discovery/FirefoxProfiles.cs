@@ -296,6 +296,8 @@ public static class FirefoxProfiles
 
     private static IEnumerable<FirefoxStoreProfileInfo> ReadStoreProfiles(string dataPath, string storeId)
     {
+        SqliteProviderBootstrap.EnsureInitialized();
+
         string storePath = Path.Combine(dataPath, "Profile Groups", $"{storeId}.sqlite");
         if (!File.Exists(storePath))
         {

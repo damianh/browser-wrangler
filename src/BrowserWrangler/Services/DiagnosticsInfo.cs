@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -135,12 +134,9 @@ internal static class DiagnosticsInfo
                 return stamped;
             }
 
-            // Fall back to the WinUI assembly, which reports its own version rather than the SDK's.
+            // Fall back to the WinUI assembly version when metadata stamping is unavailable.
             Assembly winUi = typeof(Microsoft.UI.Xaml.Application).Assembly;
-            string location = winUi.Location;
-            return string.IsNullOrEmpty(location)
-                ? winUi.GetName().Version?.ToString() ?? "unknown"
-                : FileVersionInfo.GetVersionInfo(location).FileVersion ?? "unknown";
+            return winUi.GetName().Version?.ToString() ?? "unknown";
         }
         catch (Exception)
         {

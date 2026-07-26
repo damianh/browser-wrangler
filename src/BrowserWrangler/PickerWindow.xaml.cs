@@ -9,7 +9,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
@@ -115,7 +114,7 @@ public sealed partial class PickerWindow : Window
                 row.Children.Add(hint);
             }
 
-            BitmapImage? icon = IconLoader.GetIconForProfile(profile);
+            var icon = IconLoader.GetIconForProfile(profile);
             if (icon is not null)
             {
                 var img = new Image { Source = icon, Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Center };

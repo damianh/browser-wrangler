@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [dev]
   workflow_dispatch:
 
 jobs:
@@ -20,6 +20,15 @@ jobs:
 
       - name: Build
         run: dotnet build src\BrowserWrangler -c Release -p:Platform=${{ matrix.platform }}
+
+      - name: Publish AOT
+        run: >
+          dotnet publish src\BrowserWrangler -c Release
+          -r win-${{ matrix.platform == 'ARM64' && 'arm64' || 'x64' }}
+          -p:Platform=${{ matrix.platform }}
+          -p:PublishAot=true
+          --self-contained
+          -o publish\${{ matrix.platform }}
 
       - name: Test
         if: matrix.platform == 'x64'
