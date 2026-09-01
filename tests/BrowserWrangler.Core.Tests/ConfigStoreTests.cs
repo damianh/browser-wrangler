@@ -25,6 +25,7 @@ public class ConfigStoreTests : IDisposable
         Assert.True(config.Picker.OnCtrlShift);
         Assert.True(config.Pipeline.UnwrapSafelinks);
         Assert.False(config.Pipeline.ExpandShortenedUrls);
+        Assert.False(config.HandleHtmlFiles);
         Assert.True(config.Updates.AutoCheckEnabled);
         Assert.Equal(24, config.Updates.CheckIntervalHours);
         Assert.Empty(config.Browsers);
@@ -53,6 +54,7 @@ public class ConfigStoreTests : IDisposable
         config.Pipeline.ExpandShortenedUrls = true;
         config.Pipeline.Substitute = false;
         config.Pipeline.Substitutions.Add("substr|http://|https://");
+        config.HandleHtmlFiles = true;
         config.Updates.AutoCheckEnabled = false;
         config.Updates.CheckIntervalHours = 48;
         config.Updates.AutoDownloadInstaller = true;
@@ -77,6 +79,7 @@ public class ConfigStoreTests : IDisposable
         Assert.True(loaded.Pipeline.ExpandShortenedUrls);
         Assert.False(loaded.Pipeline.Substitute);
         Assert.Equal("substr|http://|https://", loaded.Pipeline.Substitutions[0]);
+        Assert.True(loaded.HandleHtmlFiles);
         Assert.False(loaded.Updates.AutoCheckEnabled);
         Assert.Equal(48, loaded.Updates.CheckIntervalHours);
         Assert.True(loaded.Updates.AutoDownloadInstaller);

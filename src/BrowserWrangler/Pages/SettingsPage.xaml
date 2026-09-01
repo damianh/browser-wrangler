@@ -55,6 +55,17 @@
                 TextWrapping="Wrap"
                 Text="Follows HTTP redirects before matching so rules can see the final destination. This can add latency and shares clicked URLs with redirect services." />
 
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="File routing" />
+            <ToggleSwitch
+                x:Name="HandleHtmlFilesEnabled"
+                Header="Route local .htm/.html files"
+                Toggled="Setting_Changed" />
+            <TextBlock
+                FontSize="12"
+                Opacity="0.7"
+                TextWrapping="Wrap"
+                Text="When enabled, Browser Wrangler advertises support for .htm/.html in Windows so those files can be routed by your rules." />
+
             <TextBlock Margin="0,16,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="Toast" />
             <ToggleSwitch x:Name="ToastEnabled" Header="Show toast when a URL is routed" Toggled="Setting_Changed" />
             <Slider

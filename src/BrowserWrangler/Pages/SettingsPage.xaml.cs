@@ -1,4 +1,5 @@
 using BrowserWrangler.Core.Configuration;
+using BrowserWrangler.Core.Setup;
 using BrowserWrangler.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -33,6 +34,7 @@ public sealed partial class SettingsPage : Page
         ToastDuration.Value = AppState.Config.Toast.VisibleSeconds;
         SafelinksEnabled.IsOn = AppState.Config.Pipeline.UnwrapSafelinks;
         ExpandShortLinksEnabled.IsOn = AppState.Config.Pipeline.ExpandShortenedUrls;
+        HandleHtmlFilesEnabled.IsOn = AppState.Config.HandleHtmlFiles;
         LogRuleHitsEnabled.IsOn = AppState.Config.LogRuleHits;
         AutoCheckUpdatesEnabled.IsOn = AppState.Config.Updates.AutoCheckEnabled;
         UpdateIntervalHours.Value = AppState.Config.Updates.CheckIntervalHours;
@@ -66,9 +68,12 @@ public sealed partial class SettingsPage : Page
 
         bool oldAutoCheckEnabled = false;
         bool newAutoCheckEnabled = false;
+        bool oldHandleHtmlFiles = false;
+        bool newHandleHtmlFiles = false;
         AppState.MutateAndSave(config =>
         {
             oldAutoCheckEnabled = config.Updates.AutoCheckEnabled;
+            oldHandleHtmlFiles = config.HandleHtmlFiles;
             PickerSettings p = config.Picker;
             p.OnCtrlShift = PickerCtrlShift.IsChecked == true;
             p.OnCtrlAlt = PickerCtrlAlt.IsChecked == true;
@@ -78,15 +83,22 @@ public sealed partial class SettingsPage : Page
             config.Toast.ShowOnOpen = ToastEnabled.IsOn;
             config.Pipeline.UnwrapSafelinks = SafelinksEnabled.IsOn;
             config.Pipeline.ExpandShortenedUrls = ExpandShortLinksEnabled.IsOn;
+            config.HandleHtmlFiles = HandleHtmlFilesEnabled.IsOn;
             config.LogRuleHits = LogRuleHitsEnabled.IsOn;
             config.Updates.AutoCheckEnabled = AutoCheckUpdatesEnabled.IsOn;
             config.Updates.AutoDownloadInstaller = AutoDownloadInstallerEnabled.IsOn;
             newAutoCheckEnabled = config.Updates.AutoCheckEnabled;
+            newHandleHtmlFiles = config.HandleHtmlFiles;
         });
 
         if (oldAutoCheckEnabled != newAutoCheckEnabled)
         {
             AppState.Updates.NotifyScheduleChanged();
+        }
+
+        if (oldHandleHtmlFiles != newHandleHtmlFiles)
+        {
+            BrowserRegistration.RegisterAll(newHandleHtmlFiles);
         }
     }
 

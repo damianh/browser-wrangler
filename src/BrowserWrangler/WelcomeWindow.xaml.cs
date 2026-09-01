@@ -142,7 +142,7 @@ public sealed partial class WelcomeWindow : Window
 
     private void Register_Click(object sender, RoutedEventArgs e)
     {
-        BrowserRegistration.RegisterAll();
+        BrowserRegistration.RegisterAll(AppState.Config.HandleHtmlFiles);
         Refresh();
     }
 
