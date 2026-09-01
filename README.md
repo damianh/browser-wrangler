@@ -37,6 +37,7 @@ them permanently.
 - **Registers as a browser** — per-user registry (no admin), guided first-run setup, health checks with one-click fixes
 - **Browser & profile discovery** — installed browsers, Chromium profiles, Firefox profiles, Firefox Multi-Account Containers, incognito/private entries, with real profile avatars
 - **Rules engine** — substring/regex match on whole URL, domain or path; drag-to-reorder priority; fallback default profile; bt-compatible rule syntax (`scope:domain|priority:2|github.com`)
+- **Optional local HTML routing** — when enabled in Settings, Browser Wrangler advertises `.htm/.html` support in Windows so local HTML files can be routed by your rules
 - **URL pipeline** — Outlook Safelinks unwrap, optional shortened-link expansion, and find/replace substitutions (`substr|find|replace`, `rgx|find|replace`)
 - **Picker** — popup listing browsers/profiles with number-key shortcuts; triggered by hotkeys (Ctrl+Shift etc.), rule conflicts, or no-match
 - **Toast** — brief notification showing which rule routed to which browser
