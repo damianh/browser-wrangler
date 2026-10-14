@@ -173,6 +173,11 @@ public class LinuxBrowserDiscoveryTests
     [Fact]
     public void DiscoverBrowsers_builds_stable_ids_and_detects_engines()
     {
+        if (!OperatingSystem.IsLinux())
+        {
+            return;
+        }
+
         using var fx = new XdgFixture();
         fx.Write("sys/applications/google-chrome.desktop", "[Desktop Entry]\nType=Application\nName=Google Chrome\nExec=/usr/bin/google-chrome-stable %U\n" + Http);
         fx.Write("sys/applications/org.mozilla.firefox.desktop",
@@ -199,6 +204,11 @@ public class LinuxBrowserDiscoveryTests
     [InlineData("com.brave.Browser", ".var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser")]
     public void Fingerprint_maps_flatpak_config_dir(string appId, string expected)
     {
+        if (!OperatingSystem.IsLinux())
+        {
+            return;
+        }
+
         var browser = new Browser("x", "x", "x");
         LinuxBrowserDiscovery.Fingerprint(browser, appId + ".desktop", ["/usr/bin/flatpak", "run", appId], "/home/me");
 
@@ -209,6 +219,11 @@ public class LinuxBrowserDiscoveryTests
     [Fact]
     public void Fingerprint_maps_snap_paths()
     {
+        if (!OperatingSystem.IsLinux())
+        {
+            return;
+        }
+
         var browser = new Browser("x", "x", "x");
         LinuxBrowserDiscovery.Fingerprint(browser, "firefox_firefox.desktop", ["/snap/bin/firefox"], "/home/me");
 
