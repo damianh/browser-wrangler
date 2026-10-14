@@ -51,13 +51,34 @@ public static class BrowserLauncher
             return;
         }
 
-        var psi = new ProcessStartInfo
+        Process.Start(CreateStartInfo(browser.OpenCommand, arg));
+    }
+
+    /// <summary>
+    /// On Windows the open command is a bare executable path. On Linux it is the tokenised Exec
+    /// line of a .desktop file (e.g. "flatpak run org.mozilla.firefox"), so split off the program.
+    /// </summary>
+    public static ProcessStartInfo CreateStartInfo(string openCommand, string arg)
+    {
+        string fileName = openCommand;
+        string arguments = arg;
+        if (!OperatingSystem.IsWindows())
         {
-            FileName = browser.OpenCommand,
-            Arguments = arg,
+            List<string> tokens = CommandLine.Split(openCommand);
+            if (tokens.Count > 0)
+            {
+                fileName = tokens[0];
+                string prefix = CommandLine.Join(tokens.Skip(1));
+                arguments = prefix.Length == 0 ? arg : $"{prefix} {arg}";
+            }
+        }
+
+        return new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
             UseShellExecute = false,
         };
-        Process.Start(psi);
     }
 
     private static string ReplaceFirst(string input, string find, string replace)

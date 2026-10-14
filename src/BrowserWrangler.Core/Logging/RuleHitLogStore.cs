@@ -12,10 +12,7 @@ public sealed class RuleHitLogStore
     public const int MaxRetainedEntries = 500;
 
     public RuleHitLogStore()
-        : this(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppInfo.LocalDataDirectoryName,
-            "rule-hits.jsonl"))
+        : this(AppPaths.RuleHitLogFilePath)
     {
     }
 

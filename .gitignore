@@ -430,3 +430,7 @@ FodyWeavers.xsd
 
 publish/
 installer/output/
+
+# Nix build output
+/result
+/result-*

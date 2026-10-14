@@ -10,7 +10,6 @@ namespace BrowserWrangler.Core.Discovery;
 /// Discovers installed browsers from the Windows registry and enumerates their profiles.
 /// Mirrors bt's discovery: SOFTWARE\Clients\StartMenuInternet in HKLM and HKCU.
 /// </summary>
-[SupportedOSPlatform("windows")]
 public static class BrowserDiscovery
 {
     private const string ClientsRoot = @"SOFTWARE\Clients\StartMenuInternet";
@@ -20,6 +19,7 @@ public static class BrowserDiscovery
     /// Discovers all browsers, ignoring the one registered with <paramref name="ignoreProgId"/>
     /// (our own registration) so we never route URLs to ourselves.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public static List<Browser> DiscoverBrowsers(string ignoreProgId = "", bool includeFirefoxClassicProfiles = true)
     {
         var browsers = new List<Browser>();
@@ -41,6 +41,7 @@ public static class BrowserDiscovery
         return browsers;
     }
 
+    [SupportedOSPlatform("windows")]
     private static void DiscoverFromHive(
         RegistryKey hive,
         List<Browser> browsers,
@@ -190,6 +191,7 @@ public static class BrowserDiscovery
     /// Returns the ProgId currently associated with a URL protocol for the current user,
     /// checking UserChoiceLatest then UserChoice (as bt does).
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public static string GetShellUrlAssociationProgId(string protocol)
     {
         string basePath = $@"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\{protocol}";

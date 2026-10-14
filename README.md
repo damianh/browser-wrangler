@@ -5,16 +5,19 @@
 [![GitHub release](https://img.shields.io/github/v/release/damianh/browser-wrangler)](https://github.com/damianh/browser-wrangler/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-Browser Wrangler registers itself as a browser on Windows, intercepts the links
-you click, and routes them to the right browser and profile based on rules you
-define — with an optional picker popup and toast notifications.
+Browser Wrangler registers itself as a browser on Windows and Linux, intercepts
+the links you click, and routes them to the right browser and profile based on
+rules you define — with an optional picker popup and toast notifications.
 
 Project website (GitHub Pages): https://damianh.github.io/browser-wrangler/
 
-It is a .NET 10 / WinUI 3 fork of [Browser Tamer](https://github.com/aloneguid/bt)
-by [aloneguid](https://github.com/aloneguid), licensed under the Apache License 2.0.
+It is a .NET 10 fork of [Browser Tamer](https://github.com/aloneguid/bt)
+by [aloneguid](https://github.com/aloneguid), licensed under the Apache License 2.0,
+with a WinUI 3 app on Windows and an Avalonia app on Linux.
 
 ## Installation
+
+### Windows
 
 Grab the installer / portable zip from the
 [latest release](https://github.com/damianh/browser-wrangler/releases/latest)
@@ -31,6 +34,41 @@ window has a button straight to the right page in **Windows Settings** and ticks
 itself off as soon as Windows reports the change. If you close it too early, the
 app shows the same steps the next time you open it, and the **Health** page has
 them permanently.
+
+### Linux
+
+Each release has x64 and ARM64 builds for Linux. Everything installs per user, with no root needed.
+
+- **Tarball**: extract `BrowserWrangler-<version>-linux-<arch>.tar.gz` and run
+  `./install.sh`. It copies the app to `~/.local/opt/browser-wrangler`, links
+  `~/.local/bin/browser-wrangler` and registers the app as a browser.
+  `install.sh --uninstall` removes it again.
+- **AppImage**: download `BrowserWrangler-<version>-linux-<arch>.AppImage`,
+  make it executable and run it. The welcome window registers that AppImage, so
+  keep the file where it is, or open it once more after moving it.
+- **Nix**: the repository is a flake. Run it with
+  `nix run github:damianh/browser-wrangler`, or add
+  `inputs.browser-wrangler.packages.${system}.default` (or
+  `overlays.default`) to your configuration. The package ships the `.desktop`
+  file and icon.
+
+The first time you open the app, a welcome window offers to register it and make it the default browser. Making it the default writes `~/.config/mimeapps.list`, and on KDE also sets the default browser in KDE's settings.
+You can do the same from the command line with `browser-wrangler --register` and
+`browser-wrangler --make-default`. The **Health** page shows the current state.
+
+What's different on Linux:
+
+- Browsers and profiles are found from `.desktop` files, the same way your
+  desktop finds them. Settings are stored under `~/.config/browser-wrangler`.
+- **Picker hotkeys**: Caps Lock works everywhere. Ctrl/Alt/Shift combinations
+  only work in an X11 session, because Wayland doesn't let one app read keys that
+  were pressed in another. In a Wayland session the Settings page hides those
+  options.
+- On Wayland, your compositor decides where the picker appears and whether it
+  gets keyboard focus.
+- Updates only notify you. Install the new build with the same method you used
+  the first time.
+- SVG-only browser icons are shown as a letter instead.
 
 ## Features
 
@@ -78,6 +116,8 @@ to be installed in Firefox.
 
 ## Building
 
+### Windows
+
 Requires .NET SDK 10 on Windows.
 
 ```pwsh
@@ -90,12 +130,32 @@ itself if the exe has moved, and shows the first-run setup window until Browser
 Wrangler is the default browser. `--first-run` forces that window, `--register`
 and `--unregister` are the silent installer hooks.
 
+### Linux
+
+Requires .NET SDK 10. Native AOT publishing also needs `clang` and `zlib`
+development headers (`clang zlib1g-dev` on Debian/Ubuntu).
+
+```sh
+dotnet run --project src/BrowserWrangler.Linux
+dotnet test tests/BrowserWrangler.Core.Tests
+installer/linux/build.sh --appimage   # tarball + AppImage in ./artifacts
+nix build                             # Nix package
+```
+
+When you change NuGet packages, regenerate the Nix lock file with
+`nix build .#default.fetch-deps && ./result nix/deps.json`.
+
 ## Layout
 
-- `src/BrowserWrangler.Core` — models, discovery, rules, pipeline, registry setup, launching (no UI deps)
-- `src/BrowserWrangler` — WinUI 3 app: config UI, picker, toast
+- `src/BrowserWrangler.Core` — models, discovery, rules, pipeline, launching and the
+  platform layer (`Platform/Windows`: registry; `Platform/Linux`: XDG, `.desktop`,
+  `mimeapps.list`); no UI deps
+- `src/BrowserWrangler` — WinUI 3 app (Windows): config UI, picker, toast
+- `src/BrowserWrangler.Linux` — Avalonia app (Linux): config UI, picker, toast
 - `tests/BrowserWrangler.Core.Tests` — xUnit tests
-- `installer/` — Inno Setup script and release manifest templates
+- `installer/` — Inno Setup script and release manifest templates (Windows);
+  `installer/linux/` — tarball/AppImage build script and installer
+- `flake.nix`, `nix/` — Nix package
 
 ## Reporting a problem
 

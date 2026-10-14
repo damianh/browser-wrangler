@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using BrowserWrangler.Core.Configuration;
 using BrowserWrangler.Core.Launching;
+using BrowserWrangler.Core.Logging;
 using BrowserWrangler.Core.Models;
 using BrowserWrangler.Core.Rules;
 using BrowserWrangler.Services;

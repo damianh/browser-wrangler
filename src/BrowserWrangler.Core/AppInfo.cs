@@ -17,6 +17,9 @@ public static class AppInfo
     public const string CustomProtocol = "x-bw-dev";
     public const string LocalDataDirectoryName = "BrowserWrangler-Dev";
     public const string ConfigInstanceKey = "browser-wrangler-dev-config";
+
+    /// <summary>Linux app id: XDG directory names and the .desktop file name.</summary>
+    public const string LinuxAppId = "browser-wrangler-dev";
     public const string ReleaseChannel = "dev";
 #else
     public const bool IsDevChannel = false;
@@ -29,9 +32,14 @@ public static class AppInfo
     public const string CustomProtocol = "x-bw";
     public const string LocalDataDirectoryName = "BrowserWrangler";
     public const string ConfigInstanceKey = "browser-wrangler-config";
+
+    /// <summary>Linux app id: XDG directory names and the .desktop file name.</summary>
+    public const string LinuxAppId = "browser-wrangler";
     public const string ReleaseChannel = "stable";
 #endif
 
     public const string Description =
         "Redirects links to the right browser or browser profile based on your rules.";
+
+    public const string LinuxDesktopFileName = LinuxAppId + ".desktop";
 }

@@ -1,7 +1,8 @@
-using System.Runtime.InteropServices;
 using BrowserWrangler.Core.Configuration;
 using BrowserWrangler.Core.Launching;
+using BrowserWrangler.Core.Logging;
 using BrowserWrangler.Core.Models;
+using BrowserWrangler.Core.Platform;
 using BrowserWrangler.Core.Rules;
 using BrowserWrangler.Services;
 using Microsoft.UI.Dispatching;
@@ -29,14 +30,6 @@ internal static class LaunchContext
 
 public static class Program
 {
-    [DllImport("user32.dll")]
-    private static extern short GetAsyncKeyState(int vKey);
-
-    private const int VK_SHIFT = 0x10;
-    private const int VK_CONTROL = 0x11;
-    private const int VK_MENU = 0x12; // Alt
-    private const int VK_CAPITAL = 0x14;
-
     [STAThread]
     public static int Main(string[] args)
     {
@@ -111,7 +104,7 @@ public static class Program
         }
 
         var payload = new ClickPayload(url);
-        bool pickerRequested = IsPickerHotkeyDown(config.Picker);
+        bool pickerRequested = PlatformServices.Current.IsPickerHotkeyDown(config.Picker);
 
         RouteDecision decision = UrlRouter.Route(config, payload, pickerRequested);
         LaunchContext.Decision = decision;
@@ -143,21 +136,6 @@ public static class Program
                 StartXamlApp();
                 return 0;
         }
-    }
-
-    private static bool IsPickerHotkeyDown(PickerSettings settings)
-    {
-        static bool Down(int key) => (GetAsyncKeyState(key) & 0x8000) != 0;
-
-        bool ctrl = Down(VK_CONTROL);
-        bool shift = Down(VK_SHIFT);
-        bool alt = Down(VK_MENU);
-        bool caps = (GetAsyncKeyState(VK_CAPITAL) & 0x0001) != 0;
-
-        return (settings.OnCtrlShift && ctrl && shift)
-            || (settings.OnCtrlAlt && ctrl && alt)
-            || (settings.OnAltShift && alt && shift)
-            || (settings.OnCapsLock && caps);
     }
 
     private static void OnRedirectedActivation(object? sender, AppActivationArguments e)

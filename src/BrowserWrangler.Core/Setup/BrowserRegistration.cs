@@ -47,7 +47,6 @@ public sealed class SystemCheck
 /// <summary>
 /// Registers/unregisters the app as a browser in the per-user registry (mirrors bt's setup).
 /// </summary>
-[SupportedOSPlatform("windows")]
 public static class BrowserRegistration
 {
     private static string BrowserRegPath => $@"Software\Clients\StartMenuInternet\{AppInfo.Name}";
@@ -59,6 +58,7 @@ public static class BrowserRegistration
     /// <summary>Full path of the executable to register; defaults to the current process.</summary>
     public static string ExecutablePath { get; set; } = Environment.ProcessPath ?? string.Empty;
 
+    [SupportedOSPlatform("windows")]
     public static void RegisterAll()
     {
         RegisterCustomProtocol();
@@ -66,6 +66,7 @@ public static class BrowserRegistration
         NotifyShellAssociationsChanged();
     }
 
+    [SupportedOSPlatform("windows")]
     public static void UnregisterAll()
     {
         Registry.CurrentUser.DeleteSubKeyTree(BrowserRegPath, throwOnMissingSubKey: false);
@@ -82,6 +83,7 @@ public static class BrowserRegistration
     /// single registry read in the common case and never throws.
     /// </summary>
     /// <returns>True when a repair was performed.</returns>
+    [SupportedOSPlatform("windows")]
     public static bool EnsureRegistered()
     {
         try
@@ -102,6 +104,7 @@ public static class BrowserRegistration
     }
 
     /// <summary>Registers under StartMenuInternet with http/https capabilities.</summary>
+    [SupportedOSPlatform("windows")]
     public static void RegisterBrowser()
     {
         string appPath = ExecutablePath;
@@ -132,6 +135,7 @@ public static class BrowserRegistration
     }
 
     /// <summary>Registers the x-bw custom protocol handler.</summary>
+    [SupportedOSPlatform("windows")]
     public static void RegisterCustomProtocol()
     {
         SetValue(CustomProtoRegPath, null, $"URL:{AppInfo.CustomProtocol}");
@@ -139,6 +143,7 @@ public static class BrowserRegistration
         SetValue(CustomProtoRegPath + @"\shell\open\command", null, $"\"{ExecutablePath}\" \"%1\"");
     }
 
+    [SupportedOSPlatform("windows")]
     public static bool IsRegisteredAsBrowser(out string error)
     {
         string expected = $"\"{ExecutablePath}\"";
@@ -150,6 +155,7 @@ public static class BrowserRegistration
     }
 
     /// <summary>True when http/https default handlers point at our ProgId.</summary>
+    [SupportedOSPlatform("windows")]
     public static bool IsDefaultBrowser(out bool http, out bool https)
     {
         http = BrowserDiscovery.GetShellUrlAssociationProgId("http") == AppInfo.ProgId;
@@ -158,6 +164,7 @@ public static class BrowserRegistration
     }
 
     /// <summary>Opens Windows Settings on the default apps page, scrolled to our entry where supported.</summary>
+    [SupportedOSPlatform("windows")]
     public static void OpenDefaultAppsSettings()
     {
         Process.Start(new ProcessStartInfo(BuildDefaultAppsUri(Environment.OSVersion.Version.Build))
@@ -179,6 +186,7 @@ public static class BrowserRegistration
     }
 
     /// <summary>Tells the shell that file/URL associations changed so Default Apps refreshes.</summary>
+    [SupportedOSPlatform("windows")]
     private static void NotifyShellAssociationsChanged()
     {
         try
@@ -197,6 +205,7 @@ public static class BrowserRegistration
     [DllImport("shell32.dll", SetLastError = false)]
     private static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);
 
+    [SupportedOSPlatform("windows")]
     public static List<SystemCheck> GetChecks() =>
     [
         new SystemCheck(
@@ -236,6 +245,7 @@ public static class BrowserRegistration
             OpenDefaultAppsSettings),
     ];
 
+    [SupportedOSPlatform("windows")]
     private static void SetValue(string keyPath, string? valueName, string value)
     {
         using RegistryKey key = Registry.CurrentUser.CreateSubKey(keyPath);

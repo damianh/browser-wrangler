@@ -1,12 +1,12 @@
 using BrowserWrangler.Core.Configuration;
 using BrowserWrangler.Core.Launching;
-using BrowserWrangler.Core.Logging;
 using BrowserWrangler.Core.Models;
 using BrowserWrangler.Core.Rules;
 
-namespace BrowserWrangler.Services;
+namespace BrowserWrangler.Core.Logging;
 
-internal static class RuleHitLogger
+/// <summary>Appends routing decisions to the rule-hit log when enabled.</summary>
+public static class RuleHitLogger
 {
     private static readonly RuleHitLogStore Store = new();
 

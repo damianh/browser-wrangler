@@ -21,7 +21,16 @@ public static class SqliteProviderBootstrap
                 return;
             }
 
-            raw.SetProvider(new SQLite3Provider_winsqlite3());
+            // Windows ships winsqlite3 in-box; elsewhere the host ships the bundled e_sqlite3 library
+            if (OperatingSystem.IsWindows())
+            {
+                raw.SetProvider(new SQLite3Provider_winsqlite3());
+            }
+            else
+            {
+                raw.SetProvider(new SQLite3Provider_e_sqlite3());
+            }
+
             raw.FreezeProvider();
             _initialized = true;
         }

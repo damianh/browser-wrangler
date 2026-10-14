@@ -344,7 +344,9 @@ public static class FirefoxProfiles
 
     private static string ResolveProfilePath(string dataPath, FirefoxProfileInfo profile) =>
         profile.IsRelative
-            ? Path.GetFullPath(Path.Combine(dataPath, profile.Path.Replace('/', Path.DirectorySeparatorChar)))
+            ? Path.GetFullPath(Path.Combine(
+                dataPath,
+                profile.Path.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)))
             : profile.Path;
 
     private static string? TryGetString(JsonElement element, string key) =>

@@ -94,7 +94,9 @@ public static class ChromiumProfiles
         }
 
         // private-mode instance (Edge names it differently)
-        bool isEdge = browser.OpenCommand.Contains("msedge.exe", StringComparison.OrdinalIgnoreCase);
+        bool isEdge = browser.OpenCommand.Contains("msedge.exe", StringComparison.OrdinalIgnoreCase) ||
+            browser.OpenCommand.Contains("microsoft-edge", StringComparison.OrdinalIgnoreCase) ||
+            browser.OpenCommand.Contains("com.microsoft.Edge", StringComparison.OrdinalIgnoreCase);
         string privName = isEdge ? "InPrivate" : "Incognito";
         string privArg = isEdge
             ? $"\"{BrowserProfile.UrlArgName}\" --inprivate"

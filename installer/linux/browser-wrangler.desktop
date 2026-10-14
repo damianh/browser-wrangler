@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Browser Wrangler
+GenericName=Web Browser
+Comment=Redirects links to the right browser or browser profile based on your rules.
+Exec=browser-wrangler %u
+Icon=browser-wrangler
+Terminal=false
+StartupNotify=false
+StartupWMClass=browser-wrangler
+Categories=Network;WebBrowser;
+MimeType=x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/x-bw;

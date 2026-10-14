@@ -33,3 +33,47 @@ jobs:
       - name: Test
         if: matrix.platform == 'x64'
         run: dotnet test tests\BrowserWrangler.Core.Tests -c Release
+
+  linux:
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install native toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev file
+
+      - name: Test
+        if: matrix.arch == 'x64'
+        run: dotnet test tests/BrowserWrangler.Core.Tests -c Release
+
+      - name: Publish AOT, tarball and AppImage
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: installer/linux/build.sh --appimage
+
+      - name: Smoke test
+        run: artifacts/stage/browser-wrangler-linux-${{ matrix.arch }}/browser-wrangler --version
+
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Build flake
+        run: nix build .#default -L
+
+      - name: Smoke test
+        run: ./result/bin/browser-wrangler --version

@@ -4,6 +4,7 @@
       <Platform Project="x64" />
     </Project>
     <Project Path="src/BrowserWrangler.Core/BrowserWrangler.Core.csproj" />
+    <Project Path="src/BrowserWrangler.Linux/BrowserWrangler.Linux.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BrowserWrangler.Core.Tests/BrowserWrangler.Core.Tests.csproj" />
