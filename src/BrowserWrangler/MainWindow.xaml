@@ -9,6 +9,13 @@
         PaneDisplayMode="Left"
         OpenPaneLength="200"
         SelectionChanged="Nav_SelectionChanged">
+        <NavigationView.Resources>
+            <Style TargetType="ScrollViewer">
+                <Setter Property="HorizontalScrollMode" Value="Enabled" />
+                <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+                <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            </Style>
+        </NavigationView.Resources>
         <NavigationView.MenuItems>
             <NavigationViewItem Content="Browsers" Tag="browsers">
                 <NavigationViewItem.Icon>

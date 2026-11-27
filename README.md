@@ -45,6 +45,9 @@ them permanently.
 
 ## Screenshots
 
+The configuration pages and sidebar scroll when their contents do not fit the
+window, with horizontal and vertical scrollbars appearing only as needed.
+
 ### Browsers
 
 Toggle which browsers appear in the picker, and drag to reorder them.
