@@ -16,14 +16,13 @@ by [aloneguid](https://github.com/aloneguid), licensed under the Apache License 
 
 ## Installation
 
-Grab the installer / portable zip from the
+```pwsh
+winget install DamianH.BrowserWrangler
+```
+
+Or grab the installer / portable zip from the
 [latest release](https://github.com/damianh/browser-wrangler/releases/latest)
 (x64 and ARM64). Installs per-user — no admin required.
-
-For the **dev channel**, install from the latest
-[prerelease](https://github.com/damianh/browser-wrangler/releases?q=prerelease%3Atrue)
-artifact named `BrowserWrangler-dev-...`. It installs side-by-side as
-**Browser Wrangler (Dev Channel)**.
 
 The installer registers Browser Wrangler as a browser and opens a short setup
 window afterwards. Windows only lets *you* pick the default browser, so that
@@ -96,7 +95,7 @@ and `--unregister` are the silent installer hooks.
 - `src/BrowserWrangler.Core` — models, discovery, rules, pipeline, registry setup, launching (no UI deps)
 - `src/BrowserWrangler` — WinUI 3 app: config UI, picker, toast
 - `tests/BrowserWrangler.Core.Tests` — xUnit tests
-- `installer/` — Inno Setup script and release manifest templates
+- `installer/` — Inno Setup script and winget manifest templates
 
 ## Reporting a problem
 
@@ -106,9 +105,10 @@ already filled in — please add a screenshot if you can. **Copy diagnostics** p
 the same block on the clipboard if you would rather paste it somewhere else.
 
 The About page has a **Check for updates** button that compares your build
-against the latest release for your channel. Automatic update checks are enabled
-by default when the config app is open (you can turn them off in **Settings**),
-and optional installer auto-download still requires manual install confirmation.
+against the latest published stable release. Automatic stable-update checks are
+enabled by default when the config app is open (you can turn them off in
+**Settings**), and optional installer auto-download still requires manual
+install confirmation.
 
 ## License
 
