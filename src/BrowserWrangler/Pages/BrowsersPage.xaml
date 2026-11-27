@@ -11,9 +11,8 @@
         <Grid
             Padding="24"
             RowSpacing="12"
-            Width="{x:Bind PageScroll.ViewportWidth, Mode=OneWay}"
             Height="{x:Bind PageScroll.ViewportHeight, Mode=OneWay}"
-            MinWidth="608"
+            MinWidth="{x:Bind PageScroll.ViewportWidth, Mode=OneWay}"
             MinHeight="240">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
