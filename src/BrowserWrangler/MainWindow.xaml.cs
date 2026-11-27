@@ -44,7 +44,7 @@ public sealed partial class MainWindow : Window
 
     private void FixDefaultBrowser_Click(object sender, RoutedEventArgs e)
     {
-        BrowserRegistration.EnsureRegistered();
+        BrowserRegistration.EnsureRegistered(AppState.Config.HandleHtmlFiles);
         BrowserRegistration.OpenDefaultAppsSettings();
     }
 

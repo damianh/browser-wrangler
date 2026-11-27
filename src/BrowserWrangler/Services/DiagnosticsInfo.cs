@@ -21,8 +21,7 @@ internal static class DiagnosticsInfo
     public static Version AppVersion { get; } =
         typeof(DiagnosticsInfo).Assembly.GetName().Version ?? new Version(1, 0, 0, 0);
 
-    public static string VersionDisplay { get; } = AppVersion.ToString(3)
-        + (AppInfo.IsDevChannel ? " (Dev Channel)" : string.Empty);
+    public static string VersionDisplay { get; } = AppVersion.ToString(3);
 
     public static string Copyright { get; } =
         typeof(DiagnosticsInfo).Assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright

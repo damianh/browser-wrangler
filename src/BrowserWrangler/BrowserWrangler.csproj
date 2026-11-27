@@ -15,8 +15,6 @@
     <PublishAot>true</PublishAot>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-    <ReleaseChannel Condition="'$(ReleaseChannel)' == ''">stable</ReleaseChannel>
-    <DefineConstants Condition="'$(ReleaseChannel)' == 'dev'">$(DefineConstants);DEV_CHANNEL</DefineConstants>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

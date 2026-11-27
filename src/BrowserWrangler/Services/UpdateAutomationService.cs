@@ -21,7 +21,7 @@ public sealed record UpdateAutomationSnapshot
 
 /// <summary>
 /// Background update automation while the config app is open.
-/// Checks releases for the running channel and optionally downloads a trusted installer asset.
+/// Checks stable releases and optionally downloads a trusted installer asset.
 /// </summary>
 public sealed class UpdateAutomationService : IDisposable
 {

@@ -94,6 +94,12 @@ public sealed class AppConfig
     /// <summary>Set once the user has been through (or dismissed) the first-run setup window.</summary>
     public bool SetupCompleted { get; set; }
 
+    /// <summary>
+    /// When enabled, Browser Wrangler advertises support for .htm/.html files and routes them
+    /// through the same rule engine as links.
+    /// </summary>
+    public bool HandleHtmlFiles { get; set; }
+
     public PickerSettings Picker { get; set; } = new();
 
     public ToastSettings Toast { get; set; } = new();
