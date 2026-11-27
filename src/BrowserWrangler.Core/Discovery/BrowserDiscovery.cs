@@ -14,7 +14,7 @@ namespace BrowserWrangler.Core.Discovery;
 public static class BrowserDiscovery
 {
     private const string ClientsRoot = @"SOFTWARE\Clients\StartMenuInternet";
-    private const string FirefoxInstancePrefix = "Firefox-";
+    private const int GeckoInstallHashLength = 16;
 
     /// <summary>
     /// Discovers all browsers, ignoring the one registered with <paramref name="ignoreProgId"/>
@@ -109,10 +109,24 @@ public static class BrowserDiscovery
         return Convert.ToHexStringLower(hash);
     }
 
-    private static string GetInstanceId(string registryKeyName) =>
-        registryKeyName.StartsWith(FirefoxInstancePrefix, StringComparison.Ordinal)
-            ? registryKeyName[FirefoxInstancePrefix.Length..]
-            : registryKeyName;
+    /// <summary>
+    /// Extracts the Gecko install hash from a StartMenuInternet key name such as
+    /// "Firefox-308046B0AF4A39CB" or "Waterfox-6F940AC27A98DD61"; other names are returned unchanged.
+    /// </summary>
+    public static string GetInstanceId(string registryKeyName)
+    {
+        int dash = registryKeyName.LastIndexOf('-');
+        if (dash > 0 && registryKeyName.Length - dash - 1 == GeckoInstallHashLength)
+        {
+            string suffix = registryKeyName[(dash + 1)..];
+            if (suffix.All(Uri.IsHexDigit))
+            {
+                return suffix;
+            }
+        }
+
+        return registryKeyName;
+    }
 
     /// <summary>
     /// Detects the browser engine from files next to the executable
