@@ -373,6 +373,14 @@ public class DiscoveryParserTests
         Assert.Equal(@"C:\chrome.exe", BrowserDiscovery.UnmangleOpenCommand(@"C:\chrome.exe"));
     }
 
+    [Theory]
+    [InlineData("Firefox-308046B0AF4A39CB", "308046B0AF4A39CB")]
+    [InlineData("Waterfox-6F940AC27A98DD61", "6F940AC27A98DD61")]
+    [InlineData("Microsoft Edge", "Microsoft Edge")]
+    [InlineData("Some-Browser", "Some-Browser")]
+    public void GetInstanceId_extracts_gecko_install_hash_from_any_vendor_prefix(string keyName, string expected) =>
+        Assert.Equal(expected, BrowserDiscovery.GetInstanceId(keyName));
+
     [Fact]
     public void GetIdFromOpenCommand_is_stable_md5()
     {
