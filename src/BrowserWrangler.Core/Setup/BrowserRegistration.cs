@@ -59,10 +59,10 @@ public static class BrowserRegistration
     /// <summary>Full path of the executable to register; defaults to the current process.</summary>
     public static string ExecutablePath { get; set; } = Environment.ProcessPath ?? string.Empty;
 
-    public static void RegisterAll()
+    public static void RegisterAll(bool includeHtmlFileAssociations = false)
     {
         RegisterCustomProtocol();
-        RegisterBrowser();
+        RegisterBrowser(includeHtmlFileAssociations);
         NotifyShellAssociationsChanged();
     }
 
@@ -82,16 +82,21 @@ public static class BrowserRegistration
     /// single registry read in the common case and never throws.
     /// </summary>
     /// <returns>True when a repair was performed.</returns>
-    public static bool EnsureRegistered()
+    public static bool EnsureRegistered(bool includeHtmlFileAssociations = false)
     {
         try
         {
-            if (ExecutablePath.Length == 0 || IsRegisteredAsBrowser(out _))
+            if (ExecutablePath.Length == 0)
             {
                 return false;
             }
 
-            RegisterAll();
+            if (IsRegisteredAsBrowser(out _) && HasExpectedHtmlFileAssociations(includeHtmlFileAssociations))
+            {
+                return false;
+            }
+
+            RegisterAll(includeHtmlFileAssociations);
             return true;
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.Security.SecurityException)
@@ -101,11 +106,28 @@ public static class BrowserRegistration
         }
     }
 
-    /// <summary>Registers under StartMenuInternet with http/https capabilities.</summary>
-    public static void RegisterBrowser()
+    public static IReadOnlyList<string> GetRegisteredUrlProtocols() =>
+    [
+        "https",
+        "http",
+        AppInfo.CustomProtocol,
+    ];
+
+    public static IReadOnlyList<string> GetRegisteredFileExtensions(bool includeHtmlFileAssociations) =>
+        includeHtmlFileAssociations
+            ?
+            [
+                ".htm",
+                ".html",
+            ]
+            : [];
+
+    /// <summary>Registers under StartMenuInternet with URL capabilities and optional HTML file associations.</summary>
+    public static void RegisterBrowser(bool includeHtmlFileAssociations = false)
     {
         string appPath = ExecutablePath;
         string capRoot = BrowserRegPath + @"\Capabilities";
+        string fileAssociationsPath = capRoot + @"\FileAssociations";
 
         SetValue(BrowserRegPath, null, AppInfo.Name);
 
@@ -113,9 +135,15 @@ public static class BrowserRegistration
         SetValue(capRoot, "ApplicationDescription", AppInfo.Description);
         SetValue(capRoot, "ApplicationIcon", appPath + ",0");
 
-        foreach (string protocol in new[] { "https", "http", AppInfo.CustomProtocol })
+        foreach (string protocol in GetRegisteredUrlProtocols())
         {
             SetValue(capRoot + @"\URLAssociations", protocol, AppInfo.ProgId);
+        }
+
+        Registry.CurrentUser.DeleteSubKeyTree(fileAssociationsPath, throwOnMissingSubKey: false);
+        foreach (string extension in GetRegisteredFileExtensions(includeHtmlFileAssociations))
+        {
+            SetValue(fileAssociationsPath, extension, AppInfo.ProgId);
         }
 
         SetValue(BrowserRegPath + @"\DefaultIcon", null, appPath + ",0");
@@ -147,6 +175,31 @@ public static class BrowserRegistration
         bool ok = expected == actual;
         error = ok ? string.Empty : $"Expected: {expected}\nRegistered: {actual}";
         return ok;
+    }
+
+    private static bool HasExpectedHtmlFileAssociations(bool includeHtmlFileAssociations)
+    {
+        using RegistryKey? fileAssociations = Registry.CurrentUser.OpenSubKey(BrowserRegPath + @"\Capabilities\FileAssociations");
+        IReadOnlyList<string> extensions = GetRegisteredFileExtensions(includeHtmlFileAssociations);
+        if (extensions.Count == 0)
+        {
+            return fileAssociations is null;
+        }
+
+        if (fileAssociations is null)
+        {
+            return false;
+        }
+
+        foreach (string extension in extensions)
+        {
+            if (!string.Equals(fileAssociations.GetValue(extension) as string, AppInfo.ProgId, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>True when http/https default handlers point at our ProgId.</summary>
@@ -209,7 +262,7 @@ public static class BrowserRegistration
                 bool ok = IsRegisteredAsBrowser(out string error);
                 return (ok, error);
             },
-            RegisterAll),
+            () => RegisterAll()),
         new SystemCheck(
             "proto_http",
             "HTTP Protocol Handler",

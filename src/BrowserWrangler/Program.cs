@@ -47,7 +47,7 @@ public static class Program
         // installer hooks: silent register/unregister of the browser (per-user registry)
         if (args.Contains("--register", StringComparer.OrdinalIgnoreCase))
         {
-            Core.Setup.BrowserRegistration.RegisterAll();
+            Core.Setup.BrowserRegistration.RegisterAll(config.HandleHtmlFiles);
             return 0;
         }
 
@@ -61,22 +61,17 @@ public static class Program
         bool firstRun = args.Contains("--first-run", StringComparer.OrdinalIgnoreCase);
         if (firstRun)
         {
-            Core.Setup.BrowserRegistration.EnsureRegistered();
+            Core.Setup.BrowserRegistration.EnsureRegistered(config.HandleHtmlFiles);
             return StartConfigInstance(LaunchMode.Welcome);
         }
 
-        string? url = args.FirstOrDefault(a =>
-            a.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            a.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-            a.StartsWith(Core.AppInfo.CustomProtocol + ":", StringComparison.OrdinalIgnoreCase));
-
-        if (url is not null)
+        if (LaunchTargetParser.TryGetLaunchTargetUrl(args, Core.AppInfo.CustomProtocol, config.HandleHtmlFiles, out string url))
         {
             return HandleUrl(config, url);
         }
 
         // a moved or upgraded install leaves stale registry paths behind - repair them silently
-        Core.Setup.BrowserRegistration.EnsureRegistered();
+        Core.Setup.BrowserRegistration.EnsureRegistered(config.HandleHtmlFiles);
 
         // users who never saw the post-install window get it the first time they open the app
         bool needsSetup = !config.SetupCompleted &&

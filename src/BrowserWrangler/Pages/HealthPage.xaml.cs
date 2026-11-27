@@ -1,4 +1,5 @@
 using BrowserWrangler.Core.Setup;
+using BrowserWrangler.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -72,7 +73,7 @@ public sealed partial class HealthPage : Page
 
     private void Register_Click(object sender, RoutedEventArgs e)
     {
-        BrowserRegistration.RegisterAll();
+        BrowserRegistration.RegisterAll(AppState.Config.HandleHtmlFiles);
         Recheck();
     }
 

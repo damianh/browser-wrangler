@@ -10,7 +10,7 @@ public static class AppInfo
     public const bool IsDevChannel = true;
     public const string Name = DevName;
 
-    /// <summary>ProgId registered for http/https URL associations.</summary>
+    /// <summary>ProgId registered for URL associations (and optional .htm/.html file associations).</summary>
     public const string ProgId = "BrowserWranglerHTM.Dev";
 
     /// <summary>Custom protocol for browser extensions ("x-bw:...").</summary>
@@ -22,7 +22,7 @@ public static class AppInfo
     public const bool IsDevChannel = false;
     public const string Name = StableName;
 
-    /// <summary>ProgId registered for http/https URL associations.</summary>
+    /// <summary>ProgId registered for URL associations (and optional .htm/.html file associations).</summary>
     public const string ProgId = "BrowserWranglerHTM";
 
     /// <summary>Custom protocol for browser extensions ("x-bw:...").</summary>
