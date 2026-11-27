@@ -3,49 +3,61 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:BrowserWrangler.Controls">
-    <Grid Padding="24" RowSpacing="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal" Spacing="12">
-            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Browsers" />
-            <Button Click="Refresh_Click" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <FontIcon FontSize="14" Glyph="&#xE72C;" />
-                    <TextBlock Text="Rediscover" />
-                </StackPanel>
-            </Button>
-        </StackPanel>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-            <TextBlock VerticalAlignment="Center" Text="Default profile:" />
-            <ComboBox x:Name="DefaultProfileCombo" MinWidth="260" SelectionChanged="DefaultProfile_Changed" />
-        </StackPanel>
-        <ListView
-            x:Name="BrowserList"
-            Grid.Row="2"
-            HorizontalAlignment="Left"
-            MaxWidth="640"
-            MinWidth="560"
-            SelectionMode="None"
-            AllowDrop="True"
-            CanDragItems="True"
-            CanReorderItems="True"
-            ReorderMode="Enabled"
-            DragItemsCompleted="BrowserList_DragItemsCompleted">
-            <ListView.ItemTemplate>
-                <DataTemplate>
-                    <controls:BrowserCard />
-                </DataTemplate>
-            </ListView.ItemTemplate>
-            <ListView.ItemContainerStyle>
-                <Style TargetType="ListViewItem">
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                    <Setter Property="Padding" Value="0" />
-                    <Setter Property="Margin" Value="0,0,0,8" />
-                </Style>
-            </ListView.ItemContainerStyle>
-        </ListView>
-    </Grid>
+    <ScrollViewer
+        x:Name="PageScroll"
+        HorizontalScrollMode="Enabled"
+        HorizontalScrollBarVisibility="Auto"
+        VerticalScrollBarVisibility="Auto">
+        <Grid
+            Padding="24"
+            RowSpacing="12"
+            Height="{x:Bind PageScroll.ViewportHeight, Mode=OneWay}"
+            MinWidth="{x:Bind PageScroll.ViewportWidth, Mode=OneWay}"
+            MinHeight="240">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Browsers" />
+                <Button Click="Refresh_Click" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontSize="14" Glyph="&#xE72C;" />
+                        <TextBlock Text="Rediscover" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                <TextBlock VerticalAlignment="Center" Text="Default profile:" />
+                <ComboBox x:Name="DefaultProfileCombo" MinWidth="260" SelectionChanged="DefaultProfile_Changed" />
+            </StackPanel>
+            <ListView
+                x:Name="BrowserList"
+                Grid.Row="2"
+                HorizontalAlignment="Left"
+                MaxWidth="640"
+                MinWidth="560"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                SelectionMode="None"
+                AllowDrop="True"
+                CanDragItems="True"
+                CanReorderItems="True"
+                ReorderMode="Enabled"
+                DragItemsCompleted="BrowserList_DragItemsCompleted">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <controls:BrowserCard />
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0,0,0,8" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+            </ListView>
+        </Grid>
+    </ScrollViewer>
 </Page>
